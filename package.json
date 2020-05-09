@@ -1,0 +1,51 @@
+{
+  "name": "@tjenkinson/state-manager",
+  "version": "1.0.0",
+  "description": "StateManager provides a controlled way of managing a state object, and being notified when parts of it have changed in an atomic fashion.",
+  "main": "dist/state-manager.js",
+  "module": "dist/state-manager.es.js",
+  "types": "dist/state-manager.d.ts",
+  "keywords": [
+    "state",
+    "subscriber",
+    "listener",
+    "atomic",
+    "update"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && rollup --config rollup.config.js",
+    "watch": "rollup --config rollup.config.js --watch",
+    "prettier": "prettier --write .",
+    "lint": "prettier --check .",
+    "prepublishOnly": "npm run build && npm test",
+    "preversion": "npm run build && npm test",
+    "test": "jest"
+  },
+  "hooks": {
+    "pre-commit": "npm run prettier"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tjenkinson/state-manager.git"
+  },
+  "author": "Tom Jenkinson <tom@tjenkinson.me>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tjenkinson/state-manager/issues"
+  },
+  "homepage": "https://github.com/tjenkinson/state-manager#readme",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^11.1.0",
+    "@rollup/plugin-node-resolve": "^7.1.3",
+    "@tjenkinson/boundary": "^1.2.1",
+    "@types/jest": "^25.2.1",
+    "husky": "^4.2.5",
+    "jest": "^25.5.4",
+    "prettier": "^2.0.5",
+    "rollup": "^2.7.2",
+    "rollup-plugin-typescript2": "^0.27.0",
+    "ts-jest": "^25.5.1",
+    "tslib": "^1.11.1",
+    "typescript": "^3.8.3"
+  }
+}
