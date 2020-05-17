@@ -12,6 +12,7 @@ export type Listener<TState> = (
   changes: Readonly<Partial<TState>>,
   state: Readonly<TState>
 ) => void;
+export type IndividualListener<T> = (value: T) => void;
 export type ListenerHandle = {
   remove: () => void;
 };
@@ -197,6 +198,8 @@ export class StateManager<TState extends object> {
    *
    * It is possible to omit function, meaning just `beforeUpdate` and `afterUpdate`
    * will be called.
+   *
+   * The return value is passed through.
    */
   public update(): undefined;
   public update<T>(fn: UpdateFn<TState, T>): T;
@@ -246,6 +249,23 @@ export class StateManager<TState extends object> {
         this._listeners.splice(this._listeners.indexOf(listenerWithState), 1);
       },
     };
+  }
+
+  /**
+   * Subscribe to changes on a particular key of the state.
+   * This is similar to `subscribe`, except you receive one argument which is the new value
+   * and will only be called when the chosen key changes.
+   */
+  public subscribeIndividual<T extends keyof TState>(
+    key: T,
+    listener: IndividualListener<TState[T]>
+  ): ListenerHandle {
+    return this.subscribe((changes) => {
+      const value = changes[key];
+      if (value !== undefined) {
+        listener(value!);
+      }
+    });
   }
 
   private _onEnter(): void {

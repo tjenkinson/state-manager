@@ -335,4 +335,29 @@ describe('StateManager', () => {
       done();
     });
   });
+
+  describe('subscribeIndividual()', () => {
+    it('only calls the subscriber when the value changes', () => {
+      const stateManager = new StateManager({ a: 1, b: true });
+      const spy = jest.fn();
+      stateManager.subscribeIndividual('a', spy);
+      stateManager.update((state) => (state.b = false));
+      expect(spy).toBeCalledTimes(0);
+      stateManager.update((state) => (state.a = 2));
+      expect(spy).toBeCalledTimes(1);
+      expect(spy).lastCalledWith(2);
+    });
+
+    it('unsubscribes when remove() called', () => {
+      const stateManager = new StateManager({ a: 1, b: true });
+      const spy = jest.fn();
+      const { remove } = stateManager.subscribeIndividual('a', spy);
+      stateManager.update((state) => (state.a = 2));
+      expect(spy).toBeCalledTimes(1);
+      expect(spy).lastCalledWith(2);
+      remove();
+      stateManager.update((state) => (state.a = 3));
+      expect(spy).toBeCalledTimes(1);
+    });
+  });
 });

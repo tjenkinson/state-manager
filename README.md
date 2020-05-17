@@ -92,9 +92,15 @@ An object is returned that contains a `remove` function. Call this to unsubscrib
 
 If your subscriber throws an error it will not prevent other subscribers being invoked. The `afterUpdate` function will have an oppurtunity to handle the exception, or it will be rethrown asynchronously.
 
+### subscribeIndividual(key, fn)
+
+Subscribe to changes on a particular key of the state.
+
+This is similar to [`subscribe`](#subscribefn), except you receive one argument which is the new value and will only be called when the chosen key changes.
+
 ```ts
-const { remove } = stateManager.subscribe((diff, state) => {
-  // `diff` contains just the keys from `state` that changed since the last call
+const { remove } = stateManager.subscribeIndividual('key', (newValue) => {
+  // `newValue` contains the new value of `key` on the state
 });
 
 // later
@@ -114,10 +120,8 @@ stateManager.subscribe(({ a }) => {
   }
 });
 
-stateManager.subscribe(({ b }) => {
-  if (b !== undefined) {
-    console.log(`subscriber2 b=${b}`);
-  }
+stateManager.subscribeIndividual('b', (b) => {
+  console.log(`subscriber2 b=${b}`);
   if (b === 3) {
     stateManager.update((state) => (state.a = 1));
   }
