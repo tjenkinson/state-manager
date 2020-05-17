@@ -84,7 +84,7 @@ The first argument taked a function which is invoked with 2 arguments:
 
 You are allowed to update the state again from your subscriber, but it needs to be from an `update` call.
 
-Subscribers are invoked in the order they were registered. If a subscriber changes the state the first subscriber will be invoked again. This means earlier subscribers see the changes from later subscribers. The last subsciber won't see the intermediary changes.
+Subscribers are invoked in the order they were registered. If a subscriber changes the state the first subscriber will be invoked again. This means earlier subscribers see the changes from later subscribers. The last subscriber won't see the intermediary changes.
 
 An object is returned that contains a `remove` function. Call this to unsubscribe.
 
