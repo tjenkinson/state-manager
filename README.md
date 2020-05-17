@@ -1,5 +1,7 @@
 [![npm version](https://badge.fury.io/js/%40tjenkinson%2Fstate-manager.svg)](https://badge.fury.io/js/%40tjenkinson%2Fstate-manager)
 
+test
+
 # State Manager
 
 This provides a controlled way of managing a state object, and being notified when parts of it have changed. It ensures that state updates are atomic, meaning change subscribers are only notified of changes when the state has been updated completely. Subscribers also get the latest
