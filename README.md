@@ -102,6 +102,8 @@ remove();
 ## Example
 
 ```ts
+import { StateManager } from '@tjenkinson/state-manager';
+
 const stateManager = new StateManager({ a: 1, b: 2 });
 
 stateManager.subscribe(({ a }) => {
