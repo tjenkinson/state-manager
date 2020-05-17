@@ -65,6 +65,8 @@ This is how you update the state.
 
 The first argument takes a function that will be invoked synchronously and provided with the current state as the first argument. To make changes to the state just update the object. It is possible to have multiple nested update calls and the subscribers will only be invoked when all calls have completed.
 
+The return value is passed through.
+
 ```ts
 stateManager.update((state) => {
   // update `state` here

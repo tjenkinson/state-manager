@@ -177,6 +177,12 @@ describe('StateManager', () => {
     expect(Object.isSealed(spy.mock.calls[0][0].state)).toBe(true);
   });
 
+  it('passes through the return value from update()', () => {
+    const stateManager = new StateManager({ a: 1, b: true });
+    const mockReturnValue = Symbol('mockReturnValue');
+    expect(stateManager.update(() => mockReturnValue)).toBe(mockReturnValue);
+  });
+
   describe('error handling', () => {
     it('rethrows an error from beforeUpdate after updating state and does not call update callbacks', (done) => {
       const mockError = Symbol('mockError');
