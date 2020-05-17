@@ -39,12 +39,12 @@ describe('StateManager', () => {
     stateManager.subscribe(spy);
     stateManager.update((state) => (state.a = 2));
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith({ a: 2 }, { a: 2, b: true });
+    expect(spy).lastCalledWith({ a: 2 }, { a: 2, b: true });
     expect(Object.isSealed(spy.mock.calls[0][0])).toBe(true);
     expect(Object.isSealed(spy.mock.calls[0][1])).toBe(true);
     stateManager.update((state) => (state.b = false));
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy).toHaveBeenCalledWith({ b: false }, { a: 2, b: false });
+    expect(spy).lastCalledWith({ b: false }, { a: 2, b: false });
     expect(Object.isSealed(spy.mock.calls[1][0])).toBe(true);
     expect(Object.isSealed(spy.mock.calls[1][1])).toBe(true);
   });
@@ -169,7 +169,7 @@ describe('StateManager', () => {
     );
     stateManager.update((state) => (state.a = 2));
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith({
+    expect(spy).lastCalledWith({
       state: { a: 2, b: true },
       exceptionOccurred: false,
       retrieveExceptions: expect.any(Function),
@@ -233,7 +233,7 @@ describe('StateManager', () => {
       expect(spy).toHaveBeenCalledTimes(1);
       expect(stateManager.getState()).toEqual({ a: 2, b: true });
       expect(throwAsyncSpy).toHaveBeenCalledTimes(1);
-      expect(throwAsyncSpy).toHaveBeenCalledWith([mockError]);
+      expect(throwAsyncSpy).lastCalledWith([mockError]);
     });
 
     it('throws listener errors async if retrieveExceptions not called in afterUpdate', () => {
@@ -256,13 +256,13 @@ describe('StateManager', () => {
       expect(spy).toHaveBeenCalledTimes(1);
       expect(stateManager.getState()).toEqual({ a: 2, b: true });
       expect(afterUpdateSpy).toHaveBeenCalledTimes(1);
-      expect(afterUpdateSpy).toHaveBeenCalledWith({
+      expect(afterUpdateSpy).lastCalledWith({
         state: { a: 2, b: true },
         exceptionOccurred: true,
         retrieveExceptions: expect.any(Function),
       });
       expect(throwAsyncSpy).toHaveBeenCalledTimes(1);
-      expect(throwAsyncSpy).toHaveBeenCalledWith([mockError]);
+      expect(throwAsyncSpy).lastCalledWith([mockError]);
     });
 
     it('does not throw listener errors async if retrieveExceptions called in afterUpdate', () => {
