@@ -10,27 +10,33 @@ describe('StateManager', () => {
   });
 
   it('returns the immutable state from getState()', () => {
-    const stateManager = new StateManager({ a: 1, b: true });
+    const stateManager = new StateManager({ a: 1, b: true, c: { d: true } });
     const state = stateManager.getState();
-    expect(state).toEqual({ a: 1, b: true });
+    expect(state).toEqual({ a: 1, b: true, c: { d: true } });
     expect(Object.isFrozen(state)).toBe(true);
-    stateManager.update((state) => (state.a = 2));
+    stateManager.update((state) => {
+      state.a = 2;
+      state.c.d = false;
+    });
     const state2 = stateManager.getState();
-    expect(state).toEqual({ a: 1, b: true });
-    expect(state2).toEqual({ a: 2, b: true });
+    expect(state).toEqual({ a: 1, b: true, c: { d: true } });
+    expect(state2).toEqual({ a: 2, b: true, c: { d: false } });
     expect(Object.isFrozen(state2)).toBe(true);
   });
 
-  it('returns the correct immutable diff from getStateDiff()', () => {
-    const stateManager = new StateManager({ a: 1, b: true });
-    const diff = stateManager.getStateDiff();
-    expect(diff).toEqual({});
-    expect(Object.isFrozen(diff)).toBe(true);
-    stateManager.update((state) => (state.a = 2));
-    const diff2 = stateManager.getStateDiff();
-    expect(diff).toEqual({});
-    expect(diff2).toEqual({ a: 2 });
-    expect(Object.isFrozen(diff2)).toBe(true);
+  it('returns the correct immutable changes from getStateChanges()', () => {
+    const stateManager = new StateManager({ a: 1, b: true, c: { d: true } });
+    const changes = stateManager.getStateChanges();
+    expect(changes).toEqual({});
+    expect(Object.isFrozen(changes)).toBe(true);
+    stateManager.update((state) => {
+      state.a = 2;
+      state.c.d = false;
+    });
+    const changes2 = stateManager.getStateChanges();
+    expect(changes).toEqual({});
+    expect(changes2).toEqual({ a: true, c: { d: true } });
+    expect(Object.isFrozen(changes2)).toBe(true);
   });
 
   it('calls the subscriber when the state changes with the correct input', () => {
@@ -39,12 +45,12 @@ describe('StateManager', () => {
     stateManager.subscribe(spy);
     stateManager.update((state) => (state.a = 2));
     expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).lastCalledWith({ a: 2 }, { a: 2, b: true });
+    expect(spy).lastCalledWith({ a: true }, { a: 2, b: true });
     expect(Object.isSealed(spy.mock.calls[0][0])).toBe(true);
     expect(Object.isSealed(spy.mock.calls[0][1])).toBe(true);
     stateManager.update((state) => (state.b = false));
     expect(spy).toHaveBeenCalledTimes(2);
-    expect(spy).lastCalledWith({ b: false }, { a: 2, b: false });
+    expect(spy).lastCalledWith({ b: true }, { a: 2, b: false });
     expect(Object.isSealed(spy.mock.calls[1][0])).toBe(true);
     expect(Object.isSealed(spy.mock.calls[1][1])).toBe(true);
   });
@@ -59,19 +65,19 @@ describe('StateManager', () => {
 
   it('always invokes subscribers with the correct state', () => {
     const stateManager = new StateManager({ a: 1, b: true });
-    let log: Array<{ id: number; state: any; diff: any }> = [];
-    stateManager.subscribe((diff, state) => {
-      log.push({ id: 1, diff, state });
+    let log: Array<{ id: number; state: any; changes: any }> = [];
+    stateManager.subscribe((changes, state) => {
+      log.push({ id: 1, changes, state });
       stateManager.update((stateToUpdate) => (stateToUpdate.a = 3));
     });
-    stateManager.subscribe((diff, state) => {
-      log.push({ id: 2, diff, state });
+    stateManager.subscribe((changes, state) => {
+      log.push({ id: 2, changes, state });
     });
     stateManager.update((state) => (state.a = 2));
     expect(log).toEqual([
-      { id: 1, diff: { a: 2 }, state: { a: 2, b: true } },
-      { id: 1, diff: { a: 3 }, state: { a: 3, b: true } },
-      { id: 2, diff: { a: 3 }, state: { a: 3, b: true } },
+      { id: 1, changes: { a: true }, state: { a: 2, b: true } },
+      { id: 1, changes: { a: true }, state: { a: 3, b: true } },
+      { id: 2, changes: { a: true }, state: { a: 3, b: true } },
     ]);
   });
 
@@ -131,7 +137,7 @@ describe('StateManager', () => {
     stateManager.subscribe(spy);
     stateManager.update();
     expect(spy).toBeCalledTimes(1);
-    expect(spy).toBeCalledWith({ a: 2 }, { a: 2, b: true });
+    expect(spy).toBeCalledWith({ a: true }, { a: 2, b: true });
   });
 
   it('calls afterUpdate after subscribers', () => {
@@ -336,28 +342,28 @@ describe('StateManager', () => {
     });
   });
 
-  describe('subscribeIndividual()', () => {
-    it('only calls the subscriber when the value changes', () => {
-      const stateManager = new StateManager({ a: 1, b: true });
-      const spy = jest.fn();
-      stateManager.subscribeIndividual('a', spy);
-      stateManager.update((state) => (state.b = false));
-      expect(spy).toBeCalledTimes(0);
-      stateManager.update((state) => (state.a = 2));
-      expect(spy).toBeCalledTimes(1);
-      expect(spy).lastCalledWith(2);
+  describe('maxDepth', () => {
+    it('stops finding changes at the correct level', () => {
+      const stateManager = new StateManager(
+        { a: { b: true }, c: 1 },
+        { maxDepth: 1 }
+      );
+      stateManager.update((state) => {
+        state.a = { b: false };
+        state.c = 2;
+      });
+      const changes = stateManager.getStateChanges();
+      expect(changes).toEqual({ c: true });
     });
 
-    it('unsubscribes when remove() called', () => {
-      const stateManager = new StateManager({ a: 1, b: true });
-      const spy = jest.fn();
-      const { remove } = stateManager.subscribeIndividual('a', spy);
-      stateManager.update((state) => (state.a = 2));
-      expect(spy).toBeCalledTimes(1);
-      expect(spy).lastCalledWith(2);
-      remove();
-      stateManager.update((state) => (state.a = 3));
-      expect(spy).toBeCalledTimes(1);
+    it('stops returning object clones at the correct level', () => {
+      const b = { c: true };
+      const a = { b };
+      const stateManager = new StateManager({ a }, { maxDepth: 2 });
+      stateManager.update((state) => {
+        expect(state.a).not.toBe(a);
+        expect(state.a.b).toBe(b);
+      });
     });
   });
 });
