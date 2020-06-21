@@ -4,7 +4,7 @@
 
 This provides a controlled way of managing a state object, and being notified when parts of it have changed. It ensures that state updates are atomic, meaning change subscribers are only notified of changes when the state has been updated completely. Subscribers also get the latest state and changes whenver they are invoked.
 
-The changes is an object containing just the keys from the state which have changed since the subscriber was last called/registered.
+Subscribers receive a `changes` object containing just the keys from the state which have changed since the subscriber was last called/registered.
 
 Subscribers are also able to update the state. Earlier subscribers see the changes from later subscribers. The last subsciber won't see the intermediary changes.
 
