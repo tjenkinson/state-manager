@@ -8,7 +8,7 @@ Subscribers receive a `changes` object containing just the keys from the state w
 
 Subscribers are also able to update the state. Earlier subscribers see the changes from later subscribers. The last subsciber won't see the intermediary changes.
 
-By default nested objects are handled. See the [`maxDepth` option](#maxdepth).
+By default nested objects are handled. See the [`maxDepth` option](#constructor).
 
 ## Installation
 
