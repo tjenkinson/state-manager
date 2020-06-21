@@ -140,7 +140,7 @@ export class StateManager<TState extends object> {
    *                                     occured in one or more of the subscribers.
    *                - retrieveExceptions: This returns an array of exceptions that occurred
    *                                      in one of more of the subscribers. If you do not call
-   *                                      this function the exceotions will be thrown
+   *                                      this function the exceptions will be thrown
    *                                      asynchronously when the current stack ends. If you
    *                                      do call this function the exceptions will not be
    *                                      thrown and it's up to you to handle them.

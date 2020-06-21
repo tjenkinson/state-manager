@@ -30,7 +30,7 @@ The second argument is an optional object which can contain the following proper
 - `afterUpdate`: This is called after an update occurs after the last subscriber has finished. It receives an object in the first argument with the following:
   - `state:` The current state (read only).
   - `exceptionOccurred`: This is a boolean which is `true` if an exception occured in one or more of the subscribers.
-  - `retrieveExceptions`: This returns an array of exceptions that occurred in one of more of the subscribers. If you do not call this function the exceotions will be thrown asynchronously when the current stack ends. If you do call this function the exceptions will not be thrown and it's up to you to handle them.
+  - `retrieveExceptions`: This returns an array of exceptions that occurred in one of more of the subscribers. If you do not call this function the exceptions will be thrown asynchronously when the current stack ends. If you do call this function the exceptions will not be thrown and it's up to you to handle them.
 - `maxDepth`: How many layers to look at when calculating the changes. If you set this to `1` and change from `{ a: { b: 1 } }` to `{ a: { b: 2 } }`, the change of `a.b` will not be picked up. The value of `a` passed to the subscriber will also not be a clone. Defaults to `Infinity`, meaning all objects will be cloned and changes will be detected. Set this if you know how many levels of the object you care about, to increase performance.
 
 You can also provide the type of the state as a generic. E.g. `new StateManager<StateType>`.
