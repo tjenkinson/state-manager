@@ -10,6 +10,8 @@ Subscribers are also able to update the state. Earlier subscribers see the chang
 
 By default nested objects are handled. See the [`maxDepth` option](#constructor).
 
+[Plain objects (created by the `Object` constructor)](https://github.com/jonschlinkert/is-plain-object) in the state are cloned. Anything else remains unmodified.
+
 ## Installation
 
 ```sh
@@ -69,9 +71,20 @@ The first argument takes a function that will be invoked synchronously and provi
 
 The return value is passed through.
 
+If you want to mark part something in the state as changing even when the reference isn't, mark it with the `mark()` function, which is provided as the second argument to the callback.
+
 ```ts
 stateManager.update((state) => {
   // update `state` here
+});
+```
+
+or
+
+```ts
+stateManager.update((state, mark) => {
+  state.myInstanceOfSomething.doSomething();
+  mark(state.myInstanceOfSomething);
 });
 ```
 

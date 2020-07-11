@@ -40,6 +40,7 @@
     "@tjenkinson/boundary": "^1.2.1",
     "@types/jest": "^26.0.0",
     "husky": "^4.2.5",
+    "is-plain-object": "^3.0.1",
     "jest": "^25.5.4",
     "prettier": "^2.0.5",
     "rollup": "^2.7.2",
