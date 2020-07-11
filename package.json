@@ -1,6 +1,6 @@
 {
   "name": "@tjenkinson/state-manager",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "StateManager provides a controlled way of managing a state object, and being notified when parts of it have changed in an atomic fashion.",
   "main": "dist/state-manager.js",
   "module": "dist/state-manager.es.js",
