@@ -1,4 +1,4 @@
-import { clone, isObject } from './utils';
+import { clone, isObject, replace } from './utils';
 
 describe('Utils', () => {
   describe('clone()', () => {
@@ -6,8 +6,18 @@ describe('Utils', () => {
       describe(`when freeze option is ${freeze}`, () => {
         it('works', () => {
           const fn = () => {};
+          const common = { common: true };
           const input = {
-            a: { b: 'test', c: false, d: null, e: undefined, f: fn, g: {} },
+            a: {
+              b: 'test',
+              c: false,
+              d: null,
+              e: undefined,
+              f: fn,
+              g: {},
+            },
+            h: common,
+            i: common,
           };
           const res = clone(input, 2, freeze);
           expect(res).not.toBe(input);
@@ -17,6 +27,9 @@ describe('Utils', () => {
           expect(Object.isFrozen(res.a)).toBe(freeze);
           expect(res.a.g).toBe(input.a.g);
           expect(Object.isFrozen(res.a.g)).toBe(false);
+          expect(res.h).toBe(res.i);
+          expect(Object.isFrozen(res.h)).toBe(freeze);
+          expect(Object.isFrozen(res.i)).toBe(freeze);
           expect(res).toEqual(input);
         });
       });
@@ -44,6 +57,40 @@ describe('Utils', () => {
     });
     it('works for objects', () => {
       expect(isObject({})).toBe(true);
+    });
+    it('returns false when not created by Object constructor', () => {
+      expect(isObject(new (function () {} as any)())).toBe(false);
+    });
+  });
+
+  describe('replace()', () => {
+    const a = { a: true };
+    const b = { b: true };
+    const c = { c: true };
+    const input = {
+      a,
+      b,
+      c,
+      d: {
+        b,
+        e: {
+          b,
+        },
+      },
+    };
+
+    replace(input, b, 'test', 2);
+
+    expect(input).toStrictEqual({
+      a,
+      b: 'test',
+      c,
+      d: {
+        b: 'test',
+        e: {
+          b,
+        },
+      },
     });
   });
 });

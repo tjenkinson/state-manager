@@ -1,7 +1,7 @@
 import { Boundary, CannotEnterError } from '@tjenkinson/boundary';
 import { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
 import { Changes, calculateChanges } from './calculate-changes';
-import { clone } from './utils';
+import { clone, replace } from './utils';
 
 export { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
 
@@ -20,7 +20,10 @@ export type Listener<TState> = (
 export type ListenerHandle = {
   remove: () => void;
 };
-export type UpdateFn<TState, TReturn> = (state: TState) => TReturn;
+export type UpdateFn<TState, TReturn> = (
+  state: TState,
+  mark: (target: unknown) => void
+) => TReturn;
 export type BeforeUpdateFn<TState> = (state: TState) => void;
 export type AfterUpdateFn<TState> = (
   afterUpdateInput: AfterUpdateInput<TState>
@@ -38,6 +41,7 @@ type ListenerWithState<TState> = {
 };
 
 const frozenEmpty = Object.freeze(Object.create(null));
+const marked = Object.create(null);
 
 /**
  * This provides a controlled way of managing a state object, and being notified when
@@ -122,6 +126,7 @@ export class StateManager<TState extends object> {
   private readonly _listeners: ListenerWithState<TState>[] = [];
   private readonly _beforeUpdateFn: BeforeUpdateFn<TState> | null;
   private readonly _afterUpdateFn: AfterUpdateFn<TState> | null;
+  private readonly _mark: (target: unknown) => void;
   private readonly _boundary: Boundary;
   private _exitDetector?: object;
   private _listenerExceptions: any[] = [];
@@ -167,6 +172,11 @@ export class StateManager<TState extends object> {
     this._state = clone(initialState, maxDepth, false);
     this._beforeUpdateFn = beforeUpdate || null;
     this._afterUpdateFn = afterUpdate || null;
+    this._mark = (target: unknown) => {
+      this._listeners.forEach(({ state }) => {
+        replace(state, target, marked, this._maxDepth);
+      });
+    };
     this._boundary = new Boundary({
       onEnter: () => this._onEnter(),
       onExit: () => this._onExit(),
@@ -203,6 +213,18 @@ export class StateManager<TState extends object> {
    * It is possible to omit function, meaning just `beforeUpdate` and `afterUpdate`
    * will be called.
    *
+   * If you want to mark part something in the state as changing even when the reference
+   * isn't, mark it with the `mark()` function, which is provided as the second argument
+   * to the callback.
+   *
+   * @example
+   * ```ts
+   * stateManager.update((state, mark) => {
+   *  state.myInstanceOfSomething.doSomething();
+   *  mark(state.myInstanceOfSomething);
+   * });
+   * ```
+   *
    * The return value is passed through.
    */
   public update(): undefined;
@@ -212,7 +234,7 @@ export class StateManager<TState extends object> {
       this._boundary.enter();
       return;
     }
-    return this._boundary.enter(() => fn(this._state));
+    return this._boundary.enter(() => fn(this._state, this._mark));
   }
 
   /**
@@ -240,7 +262,7 @@ export class StateManager<TState extends object> {
     const listenerWithState = {
       listener,
       removed: false,
-      state: clone(this._state, this._maxDepth, true),
+      state: clone(this._state, this._maxDepth, false),
     };
     this._listeners.push(listenerWithState);
 
@@ -294,7 +316,7 @@ export class StateManager<TState extends object> {
     const changes =
       calculateChanges(this._state, state, this._maxDepth + 1) || frozenEmpty;
     if (Object.keys(changes).length) {
-      listenerWithState.state = this.getState();
+      listenerWithState.state = clone(this._state, this._maxDepth, false);
       listener(changes, this.getState());
     }
   }

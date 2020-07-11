@@ -9,6 +9,14 @@ describe('StateManager', () => {
       .mockImplementation();
   });
 
+  it('calls the update() callback with the correct input', () => {
+    const stateManager = new StateManager({ a: 1, b: true });
+    const spy = jest.fn();
+    stateManager.update(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).lastCalledWith({ a: 1, b: true }, expect.any(Function));
+  });
+
   it('returns the immutable state from getState()', () => {
     const stateManager = new StateManager({ a: 1, b: true, c: { d: true } });
     const state = stateManager.getState();
@@ -187,6 +195,48 @@ describe('StateManager', () => {
     const stateManager = new StateManager({ a: 1, b: true });
     const mockReturnValue = Symbol('mockReturnValue');
     expect(stateManager.update(() => mockReturnValue)).toBe(mockReturnValue);
+  });
+
+  it('supports marking non objects of the state', () => {
+    const b = () => {};
+    const stateManager = new StateManager({ a: 1, b });
+    const spy = jest.fn();
+    stateManager.subscribe(spy);
+    stateManager.update(({ b }, mark) => {
+      mark(b);
+    });
+    expect(spy).lastCalledWith({ b: true }, { a: 1, b });
+    stateManager.update((state) => (state.a = 2));
+    expect(spy).lastCalledWith({ a: true }, { a: 2, b });
+  });
+
+  it('supports class instances', () => {
+    class SomeClass {
+      private i = 123;
+      public getI() {
+        return this.i;
+      }
+    }
+
+    const b = new SomeClass();
+    const stateManager = new StateManager({ a: 1, b });
+    const spy = jest.fn();
+    stateManager.subscribe(spy);
+    stateManager.update(({ b }) => {
+      expect(b.getI()).toBe(123);
+    });
+    expect(spy).toHaveBeenCalledTimes(0);
+    const b2 = new SomeClass();
+    stateManager.update((state) => {
+      state.b = b2;
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).lastCalledWith({ b: true }, { a: 1, b: b2 });
+    stateManager.update(({ b }, mark) => {
+      mark(b);
+    });
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).lastCalledWith({ b: true }, { a: 1, b: b2 });
   });
 
   describe('error handling', () => {

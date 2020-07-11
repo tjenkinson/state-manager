@@ -1,6 +1,8 @@
 import { calculateChanges } from './calculate-changes';
 
 describe('CalculateChanges', () => {
+  class SomeClass {}
+
   let mock: {
     a: number;
     b: boolean;
@@ -14,6 +16,7 @@ describe('CalculateChanges', () => {
         i: undefined;
       };
     };
+    k: SomeClass;
   };
   beforeEach(() => {
     const fn = () => {};
@@ -23,6 +26,7 @@ describe('CalculateChanges', () => {
       c: 'test',
       d: fn,
       e: { f: 2, g: { h: null, i: undefined } },
+      k: new SomeClass(),
     };
   });
 
