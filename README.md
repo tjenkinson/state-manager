@@ -10,7 +10,7 @@ Subscribers are also able to update the state. Earlier subscribers see the chang
 
 By default nested objects are handled. See the [`maxDepth` option](#constructor).
 
-Plain objects (created by the `Object` constructor) in the state are cloned. Anything else remains unmodified.
+[Plain objects (created by the `Object` constructor)](https://github.com/jonschlinkert/is-plain-object) in the state are cloned. Anything else remains unmodified.
 
 ## Installation
 
