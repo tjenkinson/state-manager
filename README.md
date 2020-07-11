@@ -18,7 +18,7 @@ By default nested objects are handled. See the [`maxDepth` option](#constructor)
 npm install --save @tjenkinson/state-manager
 ```
 
-or available on JSDelivr at "https://cdn.jsdelivr.net/npm/@tjenkinson/state-manager@2".
+or available on JSDelivr at "https://cdn.jsdelivr.net/npm/@tjenkinson/state-manager@3".
 
 ## API
 
