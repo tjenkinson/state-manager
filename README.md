@@ -53,7 +53,7 @@ Returns a read-only version of the state. This is not a snapshot. The object you
 stateManager.getState();
 ```
 
-### hasChanged()
+### hasChanged(...propertyPath)
 
 Informs you if the thing at the given property path or below has changed. This can be useful when you are subscribing if you want to catch up with changes you missed.
 
