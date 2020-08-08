@@ -10,7 +10,8 @@
     "subscriber",
     "listener",
     "atomic",
-    "update"
+    "update",
+    "proxy"
   ],
   "scripts": {
     "build": "rm -rf dist && rollup --config rollup.config.js",
