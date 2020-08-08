@@ -4,50 +4,90 @@ export function isObject(input: any): input is object {
   return isPlainObject(input);
 }
 
-export function replace<T>(
-  input: T,
-  find: unknown,
-  replacement: unknown,
-  depth: number
-): void {
-  if (depth === 0 || !isObject(input)) {
-    return;
-  }
-  for (const key in input) {
-    if (input[key] === find) {
-      input[key] = replacement as any;
-    } else {
-      replace(input[key], find, replacement, depth - 1);
-    }
-  }
+export function makeReadonly<T extends object>(
+  ProxyImpl: ProxyConstructor,
+  input: T
+): Readonly<T> {
+  return wrap(ProxyImpl, input, {
+    beforeChange: () => {
+      throw new TypeError('This is readonly.');
+    },
+  });
 }
 
-export function clone<T>(input: T, depth: number, freeze: boolean): T {
-  return _clone(input, depth, freeze, new Map());
-}
-
-function _clone<T>(
+export const missingProperty: unique symbol = {} as any;
+export function wrap<T extends object>(
+  ProxyImpl: ProxyConstructor,
   input: T,
-  depth: number,
-  freeze: boolean,
-  clonedItems: Map<unknown, unknown>
+  {
+    beforeChange,
+    afterChange,
+  }: {
+    beforeChange?: () => void;
+    afterChange?: (
+      breadcrumbs: Array<string | number | symbol>,
+      oldValue: any,
+      newValue: any
+    ) => void;
+  }
 ): T {
-  if (depth === 0 || !isObject(input)) {
-    return input;
-  }
-  const result: T = {} as T;
-  for (const key in input) {
-    const source = input[key];
-    const alreadyCloned = clonedItems.get(source);
-    if (!alreadyCloned) {
-      result[key] = _clone(source, depth - 1, freeze, clonedItems);
-      clonedItems.set(source, result[key]);
-    } else {
-      result[key] = alreadyCloned as any;
+  const wrapped: Map<any, any> = new Map();
+
+  function _wrap<T extends object>(
+    breadcrumbs: Array<string | number | symbol>,
+    levelInput: T
+  ): T {
+    const alreadyProxied = wrapped.get(levelInput);
+    if (alreadyProxied) {
+      return alreadyProxied;
     }
+    const traps: ProxyHandler<T> = {
+      get(target, prop) {
+        const res = (levelInput as any)[prop];
+        return isObject(res) ? _wrap([...breadcrumbs, prop], res) : res;
+      },
+      set(target, prop, value) {
+        beforeChange && beforeChange();
+        const previousValue =
+          prop in levelInput ? (levelInput as any)[prop] : missingProperty;
+        (levelInput as any)[prop] = value;
+        afterChange &&
+          afterChange([...breadcrumbs, prop], previousValue, value);
+        return true;
+      },
+      defineProperty(target, prop, descriptor) {
+        beforeChange && beforeChange();
+        const previousValue =
+          prop in levelInput ? (levelInput as any)[prop] : missingProperty;
+        Object.defineProperty(target, prop, descriptor);
+        afterChange &&
+          afterChange([...breadcrumbs, prop], previousValue, descriptor.value);
+        return true;
+      },
+      deleteProperty(target, prop) {
+        if (!(prop in (levelInput as any))) {
+          return false;
+        }
+        beforeChange && beforeChange();
+        const previousValue = (levelInput as any)[prop];
+        if (delete (levelInput as any)[prop]) {
+          afterChange &&
+            afterChange([...breadcrumbs, prop], previousValue, missingProperty);
+          return true;
+        }
+        return false;
+      },
+    };
+    let proxy: T;
+    try {
+      proxy = new ProxyImpl(levelInput, traps);
+    } catch (e) {
+      // polyfill only supports `get` and `set`
+      proxy = new ProxyImpl(levelInput, { get: traps.get, set: traps.set });
+    }
+    wrapped.set(levelInput, proxy);
+    return proxy;
   }
-  if (freeze) {
-    Object.freeze(result);
-  }
-  return result;
+
+  return _wrap([], input);
 }
