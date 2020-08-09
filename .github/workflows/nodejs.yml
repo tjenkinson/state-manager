@@ -22,5 +22,6 @@ jobs:
           npm run lint
           npm test
           npm run build
+          npm run benchmark
         env:
           CI: true

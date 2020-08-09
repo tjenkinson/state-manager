@@ -10,7 +10,8 @@
     "subscriber",
     "listener",
     "atomic",
-    "update"
+    "update",
+    "proxy"
   ],
   "scripts": {
     "build": "rm -rf dist && rollup --config rollup.config.js",
@@ -19,7 +20,8 @@
     "lint": "prettier --check .",
     "prepublishOnly": "npm run build && npm test",
     "preversion": "npm run build && npm test",
-    "test": "jest"
+    "test": "jest",
+    "benchmark": "node benchmark.js"
   },
   "hooks": {
     "pre-commit": "npm run prettier"
@@ -43,6 +45,7 @@
     "is-plain-object": "^3.0.1",
     "jest": "^25.5.4",
     "prettier": "^2.0.5",
+    "proxy-polyfill": "^0.3.2",
     "rollup": "^2.7.2",
     "rollup-plugin-typescript2": "^0.27.0",
     "ts-jest": "^25.5.1",

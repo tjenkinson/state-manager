@@ -1,29 +1,27 @@
 import { Boundary, CannotEnterError } from '@tjenkinson/boundary';
 import { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
-import { Changes, calculateChanges } from './calculate-changes';
-import { clone, replace } from './utils';
+import { wrap, makeReadonly } from './utils';
+import { ChangeTracker, PropertyPath } from './change-tracker';
 
 export { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
+export { PropertyPath } from './change-tracker';
 
-export { Changes } from './calculate-changes';
+export type HasChanged = (...propertyPath: PropertyPath) => boolean;
 
 export type StateManagerOpts<TState> = {
   beforeUpdate?: BeforeUpdateFn<TState>;
   afterUpdate?: AfterUpdateFn<TState>;
-  maxDepth?: number;
+  Proxy?: ProxyConstructor;
 };
 
 export type Listener<TState> = (
-  changes: Changes<TState>,
+  hasChanged: HasChanged,
   state: Readonly<TState>
 ) => void;
 export type ListenerHandle = {
   remove: () => void;
 };
-export type UpdateFn<TState, TReturn> = (
-  state: TState,
-  mark: (target: unknown) => void
-) => TReturn;
+export type UpdateFn<TState, TReturn> = (state: TState) => TReturn;
 export type BeforeUpdateFn<TState> = (state: TState) => void;
 export type AfterUpdateFn<TState> = (
   afterUpdateInput: AfterUpdateInput<TState>
@@ -34,32 +32,33 @@ export type AfterUpdateInput<TState> = {
   retrieveExceptions: () => any[];
 };
 
-type ListenerWithState<TState> = {
-  state: TState;
+type ListenerWithChanges<TState> = {
+  changes: ChangeTracker;
   listener: Listener<TState>;
   removed: boolean;
 };
-
-const frozenEmpty = Object.freeze(Object.create(null));
-const marked = Object.create(null);
 
 /**
  * This provides a controlled way of managing a state object, and being notified when
  * parts of it have changed. It ensures that state updates are atomic, meaning subscribers
  * are only notified of changes when the state has been updated completely.
  *
- * - To update the state use the update() method.
- * - To subscribe to state changes use the subscribe() method.
+ * - To update the state use the `update()` method.
+ * - To subscribe to state changes use the `subscribe()` method.
  *
  * @example
  * ```ts
- * const stateManager = new StateManager({ a: 1, b: 2, c: { d: 3 } });
- * stateManager.subscribe((changes, state) => {
- *   // `changes` is an object which contains only the keys of the state where the values
- *   // have changed since this subscriber was last invoked. The subscriber is allowed to
- *   // do something which may update the state. Subscribers will always get accurate information
- *   // at the time they are invoked. To read a value use the `state` object.
- *   console.log('changes', changes);
+ * const stateManager = new StateManager({ a: 1, b: 2, c: { d: 3 }, e: 4 });
+ * stateManager.subscribe((hasChanged, state) => {
+ *   // `hasChanged` is a function which takes a property path. It returns true if something at
+ *   // or below the provided path has changed since the subscriber was last invoked.
+ *   // The subscriber is allowed to do something which may update the state.
+ *   // Subscribers will always get accurate information at the time they are invoked.
+ *   // The current `state` is provided as the second argument.
+ *   console.log('a changed?', hasChanged('a'));
+ *   console.log('b changed?', hasChanged('b'));
+ *   console.log('c changed?', hasChanged('b', 'c'));
+ *   console.log('e changed?', hasChanged('e'));
  * });
  *
  * stateManager.update((state) => {
@@ -67,10 +66,14 @@ const marked = Object.create(null);
  *   state.b.c = 3;
  * });
  *
- * // just before reaching this point there would have been a console log with changes `{ a: true, b: { c: true } }`
+ * // just before reaching this point the following would be logged:
+ * // - a changed? true
+ * // - b changed? true
+ * // - c changed? true
+ * // - e changed? false
  * ```
  *
- * There is also a `beforeUpdate` option, which is a callback that will run before any update()
+ * There is also a `beforeUpdate` option, which is a callback that will run before any `update()`
  * callbacks are executed, and is allowed to update the state.
  * It is not a allowed to call `update`.
  *
@@ -83,8 +86,8 @@ const marked = Object.create(null);
  *   }
  * }});
  *
- * stateManager.subscribe((changes, state) => {
- *   console.log('changes', changes);
+ * stateManager.subscribe((hasChanged, state) => {
+ *   console.log('a changed?', hasChanged('a'));
  * });
  *
  * stateManager.update((state) => {
@@ -92,11 +95,11 @@ const marked = Object.create(null);
  * });
  * // just before reaching this point there would have been a console log with:
  * // - updating time
- * // - changes { a: true, time: true }
+ * // - a changed? true
  * ```
  *
- * And there is an `afterUpdate` option, which is a callback that will run after any update()
- * callbacks are executed and all subscribers have been finished. If an exceotion occurred in
+ * And there is an `afterUpdate` option, which is a callback that will run after any `update()`
+ * callbacks are executed and all subscribers have been finished. If an exception occurred in
  * a subscriber you are able to handle that here.
  *
  * @example
@@ -107,32 +110,33 @@ const marked = Object.create(null);
  *   }
  * }});
  *
- * stateManager.subscribe((changes, state) => {
- *   console.log('changes', changes);
+ * stateManager.subscribe((hasChanged, state) => {
+ *   console.log('a changed?', hasChanged('a'));
  * });
  *
  * stateManager.update((state) => {
  *   state.a = 2;
  * });
  * // just before reaching this point there would have been a console log with:
- * // - changes { a: true }
+ * // - a changed? true
  * // - after update
  * ```
  */
 export class StateManager<TState extends object> {
-  private readonly _maxDepth: number;
-  private readonly _initialState: TState;
   private readonly _state: TState;
-  private readonly _listeners: ListenerWithState<TState>[] = [];
+  private readonly _wrappedState: TState;
+  private readonly _readonlyState: Readonly<TState>;
+  private readonly _changes: ChangeTracker;
+  private readonly _listeners: ListenerWithChanges<TState>[] = [];
   private readonly _beforeUpdateFn: BeforeUpdateFn<TState> | null;
   private readonly _afterUpdateFn: AfterUpdateFn<TState> | null;
-  private readonly _mark: (target: unknown) => void;
   private readonly _boundary: Boundary;
   private _exitDetector?: object;
   private _listenerExceptions: any[] = [];
 
   /**
-   * Provide the initial state as the first argument.
+   * Provide the initial state as the first argument. You must not mutate this state directly.
+   * You can get a reference to a read-only version using the `getState()` method.
    *
    * The second argument is an optional object which can contain the following properties:
    * - beforeUpdate: This is called after the first `update()` call but before the callback.
@@ -140,7 +144,7 @@ export class StateManager<TState extends object> {
    *                 it. You are not allowed to make a call to `update()` from this function.
    * - afterUpdate: This is called after an update occurs after the last subscriber has
    *                finished. It receives an object in the first argument with the following:
-   *                - state: The current state (read only).
+   *                - state: A `Proxy` to the current state (read-only).
    *                - exceptionOccurred: This is a boolean which is `true` if an exception
    *                                     occured in one or more of the subscribers.
    *                - retrieveExceptions: This returns an array of exceptions that occurred
@@ -149,79 +153,87 @@ export class StateManager<TState extends object> {
    *                                      asynchronously when the current stack ends. If you
    *                                      do call this function the exceptions will not be
    *                                      thrown and it's up to you to handle them.
-   * - maxDepth: How many layers to look at when calculating the changes. If you set this to `1` and
-   *             change from `{ a: { b: 1 } }` to `{ a: { b: 2 } }`, the change of `a.b` will not
-   *             be picked up. The value of `a` passed to the subscriber will also not be a clone.
-   *             Defaults to `Infinity`, meaning all objects will be cloned and changes will be
-   *             detected. Set this if you know how many levels of the object you care about, to
-   *             increase performance.
+   * - proxy: An implementation of [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy).
+   *          Defaults to the native `Proxy` if available.
    */
   constructor(
-    initialState: TState,
+    state: TState,
     {
       beforeUpdate,
       afterUpdate,
-      maxDepth = Infinity,
+      Proxy: ProxyImpl = Proxy,
     }: StateManagerOpts<TState> = {}
   ) {
-    if (maxDepth <= 0) {
-      throw new Error('"maxDepth" must be >= 1.');
+    if (typeof Proxy === 'undefined' && !ProxyImpl) {
+      throw new Error(
+        'An implementation of `Proxy` is required. Polyfill it or provide one on the `Proxy` option.'
+      );
     }
-    this._maxDepth = maxDepth;
-    this._initialState = clone(initialState, maxDepth, true);
-    this._state = clone(initialState, maxDepth, false);
+    this._state = state;
+    this._readonlyState = makeReadonly(ProxyImpl, this._state);
+    this._wrappedState = wrap(ProxyImpl, state, {
+      afterChange: (propertyPath, oldValue, newValue) => {
+        if (oldValue === newValue) {
+          return;
+        }
+        [
+          this._changes,
+          ...this._listeners.map(({ changes }) => changes),
+        ].forEach((changes) => {
+          const existing = changes.get(propertyPath);
+          if (existing === ChangeTracker.missing) {
+            changes.set(propertyPath, oldValue);
+          } else if (newValue === existing) {
+            changes.delete(propertyPath);
+          }
+        });
+      },
+    });
     this._beforeUpdateFn = beforeUpdate || null;
     this._afterUpdateFn = afterUpdate || null;
-    this._mark = (target: unknown) => {
-      this._listeners.forEach(({ state }) => {
-        replace(state, target, marked, this._maxDepth);
-      });
-    };
     this._boundary = new Boundary({
       onEnter: () => this._onEnter(),
       onExit: () => this._onExit(),
     });
+    this._changes = new ChangeTracker();
   }
 
   /**
-   * Returns the current state (read only).
+   * Returns a read-only version of the state.
+   * This is not a snapshot.
+   * The object you get back is a `Proxy` to the original state.
+   * Properties to plain objects are also `Proxy`'s.
    */
   public getState(): Readonly<TState> {
-    return clone(this._state, this._maxDepth, true);
+    return this._readonlyState;
   }
 
   /**
-   * Returns the changes of the current state compared to the initial state.
+   * Informs you if the thing at the given property path or below has changed.
    * This can be useful when you are subscribing if you want to catch up with changes
    * you missed.
    */
-  public getStateChanges(): Changes<TState> {
-    return (
-      calculateChanges(this._state, this._initialState, this._maxDepth + 1) ||
-      frozenEmpty
-    );
+  public hasChanged(...propertyPath: PropertyPath): boolean {
+    return this._changes.hasPrefix(propertyPath);
   }
 
   /**
    * This is how you update the state.
    *
    * The first argument takes a function that will be invoked synchronously and
-   * provided with a clone of the current state as the first argument. To make changes
+   * provided with a `Proxy` to the current state as the first argument. To make changes
    * to the state just update the object. It is possible to have multiple nested update
    * calls and the subscribers will only be invoked when all calls have completed.
    *
-   * It is possible to omit function, meaning just `beforeUpdate` and `afterUpdate`
-   * will be called.
+   * The return value is passed through.
    *
-   * If you want to mark part something in the state as changing even when the reference
-   * isn't, mark it with the `mark()` function, which is provided as the second argument
-   * to the callback.
+   * It is possible to omit function, which is only useful if `beforeUpdate` makes
+   * changes to the state.
    *
    * @example
    * ```ts
-   * stateManager.update((state, mark) => {
-   *  state.myInstanceOfSomething.doSomething();
-   *  mark(state.myInstanceOfSomething);
+   * stateManager.update((state) => {
+   *  state.a = 2;
    * });
    * ```
    *
@@ -234,16 +246,18 @@ export class StateManager<TState extends object> {
       this._boundary.enter();
       return;
     }
-    return this._boundary.enter(() => fn(this._state, this._mark));
+    return this._boundary.enter(() => fn(this._wrappedState));
   }
 
   /**
    * This is how you are notified of changes to the state.
    *
    * The first argument taked a function which is invoked with 2 arguments:
-   * - changes: This is an object which contains just the keys of the state that have changed
-   *            since the last time you were called or subscribed (read only).
-   * - state: This is the current state (read only).
+   * - hasChanged: This is a function which takes a property path. It returns `true`
+   *               if something at or below the provided path has changed since the
+   *               subscriber was last invoked. E.g. `hasChanged('a', 'b')` for
+   *               checking `state.a.b`.
+   * - state: This is a `Proxy` to the current state (read-only).
    *
    * You are allowed to update the state again from your subscriber, but it needs to be from
    * an `update` call.
@@ -259,20 +273,20 @@ export class StateManager<TState extends object> {
    * be rethrown asynchronously.
    */
   public subscribe(listener: Listener<TState>): ListenerHandle {
-    const listenerWithState = {
+    const listenerWithChanges = {
       listener,
       removed: false,
-      state: clone(this._state, this._maxDepth, false),
+      changes: new ChangeTracker(),
     };
-    this._listeners.push(listenerWithState);
+    this._listeners.push(listenerWithChanges);
 
     return {
       remove: () => {
-        if (listenerWithState.removed) {
+        if (listenerWithChanges.removed) {
           return;
         }
-        listenerWithState.removed = true;
-        this._listeners.splice(this._listeners.indexOf(listenerWithState), 1);
+        listenerWithChanges.removed = true;
+        this._listeners.splice(this._listeners.indexOf(listenerWithChanges), 1);
       },
     };
   }
@@ -280,7 +294,7 @@ export class StateManager<TState extends object> {
   private _onEnter(): void {
     if (this._beforeUpdateFn) {
       try {
-        this._beforeUpdateFn(this._state);
+        this._beforeUpdateFn(this._wrappedState);
       } catch (e) {
         if (e === CannotEnterError) {
           throw CannotUpdateFromBeforeUpdateError;
@@ -311,13 +325,16 @@ export class StateManager<TState extends object> {
     }
   }
 
-  private _updateListener(listenerWithState: ListenerWithState<TState>): void {
-    const { listener, state } = listenerWithState;
-    const changes =
-      calculateChanges(this._state, state, this._maxDepth + 1) || frozenEmpty;
-    if (Object.keys(changes).length) {
-      listenerWithState.state = clone(this._state, this._maxDepth, false);
-      listener(changes, this.getState());
+  private _updateListener(
+    listenerWithChanges: ListenerWithChanges<TState>
+  ): void {
+    const { listener, changes } = listenerWithChanges;
+    const allPropertyPaths = changes.keys();
+    if (allPropertyPaths.length) {
+      listenerWithChanges.changes = new ChangeTracker();
+      const hasChanged: HasChanged = (...propertyPath: PropertyPath): boolean =>
+        changes.hasPrefix(propertyPath);
+      listener(hasChanged, this._readonlyState);
     }
   }
 
@@ -331,7 +348,7 @@ export class StateManager<TState extends object> {
     if (this._afterUpdateFn) {
       try {
         this._afterUpdateFn({
-          state: this.getState(),
+          state: this._readonlyState,
           exceptionOccurred,
           retrieveExceptions: () => {
             exceptionsHandled = true;
