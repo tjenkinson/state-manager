@@ -70,9 +70,7 @@ describe('StateManager', () => {
           },
           { Proxy: ProxyImpl }
         );
-        expect(stateManager.hasChanged()).toBe(false);
         stateManager.update((state) => (state.a = 2));
-        expect(stateManager.hasChanged()).toBe(true);
         expect(stateManager.hasChanged('a')).toBe(true);
         expect(stateManager.hasChanged('b')).toBe(false);
         expect(stateManager.hasChanged('c')).toBe(false);

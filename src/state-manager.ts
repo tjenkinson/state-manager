@@ -1,11 +1,12 @@
 import { Boundary, CannotEnterError } from '@tjenkinson/boundary';
 import { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
 import { wrap, makeReadonly } from './utils';
-import { ChangeTracker } from './change-tracker';
+import { ChangeTracker, PropertyPath } from './change-tracker';
 
 export { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
+export { PropertyPath } from './change-tracker';
 
-export type HasChanged = (...propertyPath: PropertyKey[]) => boolean;
+export type HasChanged = (...propertyPath: PropertyPath) => boolean;
 
 export type StateManagerOpts<TState> = {
   beforeUpdate?: BeforeUpdateFn<TState>;
@@ -212,7 +213,7 @@ export class StateManager<TState extends object> {
    * This can be useful when you are subscribing if you want to catch up with changes
    * you missed.
    */
-  public hasChanged(...propertyPath: Array<PropertyKey>): boolean {
+  public hasChanged(...propertyPath: PropertyPath): boolean {
     return this._changes.hasPrefix(propertyPath);
   }
 
@@ -331,9 +332,8 @@ export class StateManager<TState extends object> {
     const allPropertyPaths = changes.keys();
     if (allPropertyPaths.length) {
       listenerWithChanges.changes = new ChangeTracker();
-      const hasChanged: HasChanged = (
-        ...propertyPath: PropertyKey[]
-      ): boolean => changes.hasPrefix(propertyPath);
+      const hasChanged: HasChanged = (...propertyPath: PropertyPath): boolean =>
+        changes.hasPrefix(propertyPath);
       listener(hasChanged, this._readonlyState);
     }
   }

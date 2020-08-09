@@ -1,20 +1,18 @@
-function validatePropertyPath(propertyPath: PropertyKey[]): void {
-  if (!propertyPath.length) {
-    throw new Error('Must be at least one item.');
-  }
-}
+export type PropertyPath = {
+  // at least one item
+  0: PropertyKey;
+} & Array<PropertyKey>;
 
 export class ChangeTracker {
   public static readonly missing: unique symbol = {} as any;
 
-  private readonly _changes: Array<[PropertyKey[], unknown]> = [];
+  private readonly _changes: Array<[PropertyPath, unknown]> = [];
 
-  public keys(): PropertyKey[][] {
+  public keys(): PropertyPath[] {
     return this._changes.map(([propertyPath]) => propertyPath);
   }
 
-  public get(propertyPath: PropertyKey[]): unknown {
-    validatePropertyPath(propertyPath);
+  public get(propertyPath: PropertyPath): unknown {
     let res: unknown = ChangeTracker.missing;
     this._changes.some(([currentPropertyPath, value]) => {
       if (this._match(currentPropertyPath, propertyPath)) {
@@ -26,7 +24,7 @@ export class ChangeTracker {
     return res;
   }
 
-  public hasPrefix(propertyPath: PropertyKey[]): boolean {
+  public hasPrefix(propertyPath: PropertyPath): boolean {
     return this._changes.some(([currentPropertyPath]) => {
       return propertyPath.every(
         (breadcrumb, i) => currentPropertyPath[i] === breadcrumb
@@ -34,8 +32,7 @@ export class ChangeTracker {
     });
   }
 
-  public set(propertyPath: PropertyKey[], value: unknown): void {
-    validatePropertyPath(propertyPath);
+  public set(propertyPath: PropertyPath, value: unknown): void {
     const exists = this._changes.some((entry) => {
       if (this._match(entry[0], propertyPath)) {
         entry[1] = value;
@@ -48,7 +45,7 @@ export class ChangeTracker {
     }
   }
 
-  public delete(propertyPath: PropertyKey[]): void {
+  public delete(propertyPath: PropertyPath): void {
     this._changes.some(([currentPropertyPath], i) => {
       if (this._match(currentPropertyPath, propertyPath)) {
         this._changes.splice(i, 1);
@@ -58,7 +55,7 @@ export class ChangeTracker {
     });
   }
 
-  private _match(a: PropertyKey[], b: PropertyKey[]): boolean {
+  private _match(a: PropertyPath, b: PropertyPath): boolean {
     return a.length === b.length && a.every((entry, i) => entry === b[i]);
   }
 }

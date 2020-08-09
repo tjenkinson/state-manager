@@ -1,4 +1,5 @@
 import isPlainObject from 'is-plain-object';
+import { PropertyPath } from './change-tracker';
 
 export function isObject(input: any): input is object {
   return isPlainObject(input);
@@ -25,7 +26,7 @@ export function wrap<T extends object>(
   }: {
     beforeChange?: () => void;
     afterChange?: (
-      breadcrumbs: Array<string | number | symbol>,
+      propertyPath: PropertyPath,
       oldValue: any,
       newValue: any
     ) => void;
@@ -34,7 +35,7 @@ export function wrap<T extends object>(
   const wrapped: Map<any, any> = new Map();
 
   function _wrap<T extends object>(
-    breadcrumbs: Array<string | number | symbol>,
+    propertyPath: PropertyKey[],
     levelInput: T
   ): T {
     const alreadyProxied = wrapped.get(levelInput);
@@ -44,7 +45,7 @@ export function wrap<T extends object>(
     const traps: ProxyHandler<T> = {
       get(target, prop) {
         const res = (levelInput as any)[prop];
-        return isObject(res) ? _wrap([...breadcrumbs, prop], res) : res;
+        return isObject(res) ? _wrap([...propertyPath, prop], res) : res;
       },
       set(target, prop, value) {
         beforeChange && beforeChange();
@@ -52,7 +53,11 @@ export function wrap<T extends object>(
           prop in levelInput ? (levelInput as any)[prop] : missingProperty;
         (levelInput as any)[prop] = value;
         afterChange &&
-          afterChange([...breadcrumbs, prop], previousValue, value);
+          afterChange(
+            [...propertyPath, prop] as PropertyPath,
+            previousValue,
+            value
+          );
         return true;
       },
       defineProperty(target, prop, descriptor) {
@@ -61,7 +66,11 @@ export function wrap<T extends object>(
           prop in levelInput ? (levelInput as any)[prop] : missingProperty;
         Object.defineProperty(target, prop, descriptor);
         afterChange &&
-          afterChange([...breadcrumbs, prop], previousValue, descriptor.value);
+          afterChange(
+            [...propertyPath, prop] as PropertyPath,
+            previousValue,
+            descriptor.value
+          );
         return true;
       },
       deleteProperty(target, prop) {
@@ -72,7 +81,11 @@ export function wrap<T extends object>(
         const previousValue = (levelInput as any)[prop];
         if (delete (levelInput as any)[prop]) {
           afterChange &&
-            afterChange([...breadcrumbs, prop], previousValue, missingProperty);
+            afterChange(
+              [...propertyPath, prop] as PropertyPath,
+              previousValue,
+              missingProperty
+            );
           return true;
         }
         return false;

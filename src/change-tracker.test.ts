@@ -6,13 +6,11 @@ describe('ChangeTracker', () => {
     const tracker = new ChangeTracker();
 
     expect(tracker.keys().length).toBe(0);
-    expect(tracker.hasPrefix([])).toBe(false);
 
     expect(tracker.get(['missing'])).toBe(ChangeTracker.missing);
 
     tracker.set(['a', 1, symbol], 123);
     expect(tracker.keys().length).toBe(1);
-    expect(tracker.hasPrefix([])).toBe(true);
     expect(tracker.hasPrefix(['a'])).toBe(true);
     expect(tracker.hasPrefix(['a', 1])).toBe(true);
     expect(tracker.hasPrefix(['a', 1, symbol])).toBe(true);
@@ -24,7 +22,6 @@ describe('ChangeTracker', () => {
     expect(tracker.keys().length).toBe(1);
     tracker.delete(['a', 1, symbol]);
     expect(tracker.keys().length).toBe(0);
-    expect(tracker.hasPrefix([])).toBe(false);
 
     tracker.set(['a', 1, symbol], 123);
     tracker.set(['a', 2], 1234);
@@ -33,7 +30,6 @@ describe('ChangeTracker', () => {
     tracker.set(['a', 2], 1235);
     expect(tracker.keys().length).toBe(2);
     expect(tracker.get(['a', 2])).toBe(1235);
-    expect(tracker.hasPrefix([])).toBe(true);
     expect(tracker.hasPrefix(['a', 1])).toBe(true);
     expect(tracker.hasPrefix(['a', 2])).toBe(true);
   });
