@@ -39,7 +39,7 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^14.0.0",
     "@rollup/plugin-node-resolve": "^8.0.1",
-    "@tjenkinson/boundary": "^1.2.1",
+    "@tjenkinson/boundary": "^2.0.0",
     "@types/jest": "^26.0.0",
     "husky": "^4.2.5",
     "is-plain-object": "^4.1.1",
