@@ -333,9 +333,7 @@ export class StateManager<TState extends object> {
       listenerWithChanges.changes = new ChangeTracker();
       const hasChanged: HasChanged = (
         ...propertyPath: PropertyKey[]
-      ): boolean => {
-        return changes.hasPrefix(propertyPath);
-      };
+      ): boolean => changes.hasPrefix(propertyPath);
       listener(hasChanged, this._readonlyState);
     }
   }
