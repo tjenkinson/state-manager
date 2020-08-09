@@ -1,9 +1,7 @@
-import { Boundary, CannotEnterError } from '@tjenkinson/boundary';
-import { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
+import { Boundary } from '@tjenkinson/boundary';
 import { wrap, makeReadonly } from './utils';
 import { ChangeTracker, PropertyPath } from './change-tracker';
 
-export { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
 export { PropertyPath } from './change-tracker';
 
 export type HasChanged = (...propertyPath: PropertyPath) => boolean;
@@ -75,7 +73,6 @@ type ListenerWithChanges<TState> = {
  *
  * There is also a `beforeUpdate` option, which is a callback that will run before any `update()`
  * callbacks are executed, and is allowed to update the state.
- * It is not a allowed to call `update`.
  *
  * @example
  * ```ts
@@ -141,7 +138,7 @@ export class StateManager<TState extends object> {
    * The second argument is an optional object which can contain the following properties:
    * - beforeUpdate: This is called after the first `update()` call but before the callback.
    *                 It receives the state as the first argument and you are allowed to update
-   *                 it. You are not allowed to make a call to `update()` from this function.
+   *                 it.
    * - afterUpdate: This is called after an update occurs after the last subscriber has
    *                finished. It receives an object in the first argument with the following:
    *                - state: A `Proxy` to the current state (read-only).
@@ -293,14 +290,7 @@ export class StateManager<TState extends object> {
 
   private _onEnter(): void {
     if (this._beforeUpdateFn) {
-      try {
-        this._beforeUpdateFn(this._wrappedState);
-      } catch (e) {
-        if (e === CannotEnterError) {
-          throw CannotUpdateFromBeforeUpdateError;
-        }
-        throw e;
-      }
+      this._beforeUpdateFn(this._wrappedState);
     }
   }
 

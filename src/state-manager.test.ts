@@ -1,5 +1,4 @@
 import { StateManager } from './state-manager';
-import { CannotUpdateFromBeforeUpdateError } from './state-manager-error';
 import ProxyPolyfillBuilder from 'proxy-polyfill/src/proxy';
 const proxyPolyfill = ProxyPolyfillBuilder();
 
@@ -368,6 +367,29 @@ describe('StateManager', () => {
           done();
         });
 
+        it('rethrows an error from beforeUpdate after updating state', (done) => {
+          const mockError = Symbol('mockError');
+          const stateManager = new StateManager(
+            { a: 1, b: true },
+            {
+              Proxy: ProxyImpl,
+              beforeUpdate: (state) => {
+                state.a = 2;
+                throw mockError;
+              },
+            }
+          );
+
+          try {
+            stateManager.update();
+            done.fail('expecting error');
+          } catch (e) {
+            expect(e).toBe(mockError);
+          }
+          expect(stateManager.getState()).toEqual({ a: 2, b: true });
+          done();
+        });
+
         it('rethrows an error from update after updating state', (done) => {
           const mockError = Symbol('mockError');
           const stateManager = new StateManager(
@@ -482,24 +504,21 @@ describe('StateManager', () => {
           done();
         });
 
-        it('throws CannotUpdateFromBeforeUpdateError if beforeUpdate calls update', (done) => {
+        it('allows beforeUpdate to call update', () => {
           const stateManager = new StateManager(
             { a: 1, b: true },
             {
               Proxy: ProxyImpl,
               beforeUpdate: () => {
-                stateManager.update();
+                stateManager.update((state) => {
+                  state.a = 2;
+                });
               },
             }
           );
 
-          try {
-            stateManager.update();
-            done.fail('expecting error');
-          } catch (e) {
-            expect(e).toBe(CannotUpdateFromBeforeUpdateError);
-          }
-          done();
+          stateManager.update();
+          expect(stateManager.getState().a).toBe(2);
         });
       });
     });

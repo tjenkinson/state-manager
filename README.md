@@ -28,7 +28,7 @@ Provide the initial state as the first argument. You must not mutate this state 
 
 The second argument is an optional object which can contain the following properties:
 
-- `beforeUpdate`: This is called after the first `update()` call but before the callback. It receives the state as the first argument and you are allowed to update it. You are not allowed to make a call to `update()` from this function.
+- `beforeUpdate`: This is called after the first `update()` call but before the callback. It receives the state as the first argument and you are allowed to update it.
 - `afterUpdate`: This is called after an update occurs after the last subscriber has finished. It receives an object in the first argument with the following:
   - `state:` A `Proxy` to the current state (read-only).
   - `exceptionOccurred`: This is a boolean which is `true` if an exception occured in one or more of the subscribers.
