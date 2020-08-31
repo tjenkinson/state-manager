@@ -12,4 +12,4 @@ jobs:
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-actors: dependabot-preview[bot], tjenkinson
-          package-block-list: 'is-plain-object', '@tjenkinson/boundary'
+          package-block-list: 'is-plain-object, @tjenkinson/boundary'
