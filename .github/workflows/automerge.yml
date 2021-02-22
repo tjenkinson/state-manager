@@ -1,14 +1,13 @@
 name: Auto Merge Dependency Updates
 
 on:
-  - pull_request
-  - pull_request_review
+  - pull_request_target
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: tjenkinson/gh-action-auto-merge-dependency-updates@v1
+      - uses: tjenkinson/gh-action-auto-merge-dependency-updates@844e06b0f58743fd22b4eb497758e7ebcb3a6e94
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           allowed-actors: dependabot-preview[bot], dependabot[bot], tjenkinson
