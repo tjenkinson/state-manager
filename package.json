@@ -41,7 +41,7 @@
     "@rollup/plugin-node-resolve": "^10.0.0",
     "@tjenkinson/boundary": "^2.0.0",
     "@types/jest": "^26.0.0",
-    "husky": "^4.2.5",
+    "husky": "^7.0.0",
     "is-plain-object": "^4.1.1",
     "jest": "^25.5.4",
     "prettier": "^2.0.5",
