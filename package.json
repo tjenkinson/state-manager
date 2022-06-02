@@ -47,7 +47,7 @@
     "prettier": "^2.0.5",
     "proxy-polyfill": "^0.3.2",
     "rollup": "^2.7.2",
-    "rollup-plugin-typescript2": "^0.31.0",
+    "rollup-plugin-typescript2": "^0.32.0",
     "ts-jest": "^25.5.1",
     "tslib": "^2.0.0",
     "typescript": "^3.8.3"
