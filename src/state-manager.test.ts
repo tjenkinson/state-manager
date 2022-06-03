@@ -3,10 +3,12 @@ import ProxyPolyfillBuilder from 'proxy-polyfill/src/proxy';
 const proxyPolyfill = ProxyPolyfillBuilder();
 
 describe('StateManager', () => {
-  ([
-    [Proxy, 'native'],
-    [(proxyPolyfill as unknown) as ProxyConstructor, 'polyfill'],
-  ] as const).forEach(([ProxyImpl, proxyType]) => {
+  (
+    [
+      [Proxy, 'native'],
+      [proxyPolyfill as unknown as ProxyConstructor, 'polyfill'],
+    ] as const
+  ).forEach(([ProxyImpl, proxyType]) => {
     describe(`with ${proxyType} Proxy`, () => {
       let throwAsyncSpy: jest.SpyInstance;
       beforeEach(() => {
