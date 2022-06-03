@@ -54,7 +54,7 @@ export function wrap<T extends object>(
         (levelInput as any)[prop] = value;
         afterChange &&
           afterChange(
-            [...propertyPath, prop] as PropertyPath,
+            ([...propertyPath, prop] as unknown) as PropertyPath,
             previousValue,
             value
           );
@@ -67,7 +67,7 @@ export function wrap<T extends object>(
         Object.defineProperty(target, prop, descriptor);
         afterChange &&
           afterChange(
-            [...propertyPath, prop] as PropertyPath,
+            ([...propertyPath, prop] as unknown) as PropertyPath,
             previousValue,
             descriptor.value
           );
@@ -82,7 +82,7 @@ export function wrap<T extends object>(
         if (delete (levelInput as any)[prop]) {
           afterChange &&
             afterChange(
-              [...propertyPath, prop] as PropertyPath,
+              ([...propertyPath, prop] as unknown) as PropertyPath,
               previousValue,
               missingProperty
             );

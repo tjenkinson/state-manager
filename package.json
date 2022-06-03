@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "prepare": "husky install",
-    "build": "rm -rf dist && rollup --config rollup.config.js",
+    "build": "rm -rf dist && rollup --config rollup.config.js && tsc --declaration --emitDeclarationOnly",
     "watch": "rollup --config rollup.config.js --watch",
     "prettier": "prettier --write .",
     "lint": "prettier --check .",
@@ -37,17 +37,17 @@
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.0",
     "@rollup/plugin-node-resolve": "^13.3.0",
+    "@rollup/plugin-typescript": "^8.3.2",
     "@tjenkinson/boundary": "^2.0.0",
     "@types/jest": "^26.0.0",
     "husky": "^8.0.1",
     "is-plain-object": "^5.0.0",
-    "jest": "^25.5.4",
+    "jest": "^28.1.0",
     "prettier": "^2.6.2",
     "proxy-polyfill": "^0.3.2",
     "rollup": "^2.7.2",
-    "rollup-plugin-typescript2": "^0.32.0",
-    "ts-jest": "^25.5.1",
-    "tslib": "^2.0.0",
-    "typescript": "^3.8.3"
+    "ts-jest": "^28.0.4",
+    "tslib": "^2.4.0",
+    "typescript": "^4.7.2"
   }
 }
