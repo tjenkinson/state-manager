@@ -14,6 +14,7 @@
     "proxy"
   ],
   "scripts": {
+    "prepare": "husky install",
     "build": "rm -rf dist && rollup --config rollup.config.js",
     "watch": "rollup --config rollup.config.js --watch",
     "prettier": "prettier --write .",
@@ -22,9 +23,6 @@
     "preversion": "npm run build && npm test",
     "test": "jest",
     "benchmark": "node benchmark.js"
-  },
-  "hooks": {
-    "pre-commit": "npm run prettier"
   },
   "repository": {
     "type": "git",
@@ -37,14 +35,14 @@
   },
   "homepage": "https://github.com/tjenkinson/state-manager#readme",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^16.0.0",
-    "@rollup/plugin-node-resolve": "^10.0.0",
+    "@rollup/plugin-commonjs": "^22.0.0",
+    "@rollup/plugin-node-resolve": "^13.3.0",
     "@tjenkinson/boundary": "^2.0.0",
     "@types/jest": "^26.0.0",
-    "husky": "^4.2.5",
-    "is-plain-object": "^4.1.1",
+    "husky": "^8.0.1",
+    "is-plain-object": "^5.0.0",
     "jest": "^25.5.4",
-    "prettier": "^2.0.5",
+    "prettier": "^2.6.2",
     "proxy-polyfill": "^0.3.2",
     "rollup": "^2.7.2",
     "rollup-plugin-typescript2": "^0.32.0",
