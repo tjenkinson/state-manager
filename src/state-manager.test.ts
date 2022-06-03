@@ -263,15 +263,21 @@ describe('StateManager', () => {
         expect(spy).toBeCalledWith(expect.any(Function), { a: 2, b: true });
       });
 
-      it('calls afterUpdate after subscribers', () => {
+      it('calls afterUpdate once after subscribers', () => {
         let log: number[] = [];
         const stateManager = new StateManager(
           { a: 1, b: true },
-          { Proxy: ProxyImpl, afterUpdate: () => log.push(2) }
+          { Proxy: ProxyImpl, afterUpdate: () => log.push(3) }
         );
-        stateManager.subscribe(() => log.push(1));
+        stateManager.subscribe(() => {
+          log.push(1);
+          stateManager.update((state) => {
+            log.push(2);
+            state.a = 3;
+          });
+        });
         stateManager.update((state) => (state.a = 2));
-        expect(log).toEqual([1, 2]);
+        expect(log).toEqual([1, 2, 1, 2, 3]);
       });
 
       it('calls afterUpdate when there is no change', () => {
@@ -300,6 +306,29 @@ describe('StateManager', () => {
         expect(() => (spy.mock.calls[0][0].state.a = 1)).toThrowError(
           'This is readonly.'
         );
+      });
+
+      it('handle a listener calling update()', () => {
+        const stateManager = new StateManager(
+          { a: 0 },
+          {
+            Proxy: ProxyImpl,
+            afterUpdate: ({ state }) => {
+              if (state.a === 0) {
+                stateManager.update((_state) => {
+                  _state.a = 1;
+                });
+              }
+            },
+          }
+        );
+        const subscriberSpy = jest.fn();
+        stateManager.subscribe(subscriberSpy);
+        stateManager.update();
+        expect(stateManager.getState()).toEqual({
+          a: 1,
+        });
+        expect(subscriberSpy).toHaveBeenCalledTimes(1);
       });
 
       it('passes through the return value from update()', () => {

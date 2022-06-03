@@ -295,11 +295,11 @@ export class StateManager<TState extends object> {
   }
 
   private _onExit(): void {
-    const exitDetector = this._exitDetector;
     this._exitDetector = Object.create(null);
-    const finishedListeners = !this._listeners
+    const exitDetector = this._exitDetector;
+    const finishedListeners = this._listeners
       .slice() // listeners may remove themselves. `some` would jump over items if the array changes beneath it
-      .some((listenerWithState) => {
+      .every((listenerWithState) => {
         if (listenerWithState.removed) {
           return false;
         }
