@@ -39,7 +39,7 @@
     "@rollup/plugin-node-resolve": "^13.3.0",
     "@rollup/plugin-typescript": "^8.3.2",
     "@tjenkinson/boundary": "^2.0.0",
-    "@types/jest": "^26.0.0",
+    "@types/jest": "^28.1.0",
     "husky": "^8.0.1",
     "is-plain-object": "^5.0.0",
     "jest": "^28.1.0",
