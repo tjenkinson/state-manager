@@ -1,4 +1,4 @@
-export type PropertyPath = [PropertyKey, ...PropertyKey[]];
+export type PropertyPath = readonly [PropertyKey, ...(readonly PropertyKey[])];
 
 export class ChangeTracker {
   public static readonly missing: unique symbol = {} as any;
