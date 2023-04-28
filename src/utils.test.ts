@@ -1,10 +1,11 @@
-import { wrap, missingProperty, makeReadonly } from './utils';
+import { Boundary } from '@tjenkinson/boundary';
+import { wrap, missingProperty } from './utils';
 
 describe('Utils', () => {
   describe('wrap()', () => {
     it('correctly proxies the object', () => {
       const source: any = {};
-      const wrapped = wrap(Proxy, source, {});
+      const wrapped = wrap(Proxy, new Boundary(), source, {});
       expect(source).toStrictEqual({});
       expect(wrapped).toStrictEqual({});
       wrapped.test = 1;
@@ -31,10 +32,39 @@ describe('Utils', () => {
       expect(wrapped).toStrictEqual({ test: { test2: 2 }, test3: 3 });
     });
 
+    it('integrates boundary properly', () => {
+      const log: string[] = [];
+      const boundary = new Boundary({
+        onEnter: () => {
+          expect(source.value).toBe(0);
+          log.push('onEnter');
+        },
+        onExit: () => {
+          expect(source.value).toBe(1);
+          log.push('onExit');
+        },
+      });
+
+      const source = { value: 0 };
+      const wrapped = wrap(Proxy, boundary, source, {
+        beforeChange: () => log.push('beforeChange'),
+        afterChange: () => log.push('afterChange'),
+      });
+
+      wrapped.value = 1;
+
+      expect(log).toStrictEqual([
+        'onEnter',
+        'beforeChange',
+        'afterChange',
+        'onExit',
+      ]);
+    });
+
     describe('beforeChange', () => {
       it('calls beforeChange before property added', () => {
         const source = {} as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           beforeChange: () => {
             expect(source.test).toBeUndefined();
           },
@@ -44,7 +74,7 @@ describe('Utils', () => {
 
       it('calls beforeChange before property removed', () => {
         const source = { test: 1 } as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           beforeChange: () => {
             expect(source.test).toBe(1);
           },
@@ -54,7 +84,7 @@ describe('Utils', () => {
 
       it('calls beforeChange before property updated', () => {
         const source = { test: 1 } as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           beforeChange: () => {
             expect(source.test).toBe(1);
           },
@@ -64,7 +94,7 @@ describe('Utils', () => {
 
       it('calls beforeChange before `Object.defineProperty`', () => {
         const source = {} as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           beforeChange: () => {
             expect(source.test).toBeUndefined();
           },
@@ -80,7 +110,7 @@ describe('Utils', () => {
     describe('afterChange', () => {
       it('calls afterChange after property added with correct input', () => {
         const source = { root: {} } as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           afterChange: (breadcrumbs, oldValue, newValue) => {
             expect(source.root.test).toBe(1);
             expect(breadcrumbs).toStrictEqual(['root', 'test']);
@@ -93,7 +123,7 @@ describe('Utils', () => {
 
       it('calls afterChange after property removed with correct input', () => {
         const source = { root: { test: 1 } } as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           afterChange: (breadcrumbs, oldValue, newValue) => {
             expect('test' in source.root).toBe(false);
             expect(breadcrumbs).toStrictEqual(['root', 'test']);
@@ -106,7 +136,7 @@ describe('Utils', () => {
 
       it('calls afterChange after property updated with correct input', () => {
         const source = { root: { test: 1 } } as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           afterChange: (breadcrumbs, oldValue, newValue) => {
             expect(source.root.test).toBe(2);
             expect(breadcrumbs).toStrictEqual(['root', 'test']);
@@ -119,7 +149,7 @@ describe('Utils', () => {
 
       it('calls afterChange after `Object.defineProperty`', () => {
         const source = { root: {} } as any;
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           afterChange: (breadcrumbs, oldValue, newValue) => {
             expect(source.root.test).toBe(1);
             expect(breadcrumbs).toStrictEqual(['root', 'test']);
@@ -142,7 +172,7 @@ describe('Utils', () => {
           enumerable: true,
         });
         const fn = jest.fn();
-        const wrapped = wrap(Proxy, source, {
+        const wrapped = wrap(Proxy, new Boundary(), source, {
           afterChange: fn,
         });
         expect(() => {
@@ -150,33 +180,6 @@ describe('Utils', () => {
         }).toThrowError();
         expect(fn).not.toHaveBeenCalled();
       });
-    });
-  });
-
-  describe('makeReadonly()', () => {
-    it('prevents changes to the object', () => {
-      const source = { root: { test: 1 } } as any;
-      const wrapped = makeReadonly(Proxy, source);
-      expect(() => {
-        wrapped.root.test = 2;
-      }).toThrowError('This is readonly.');
-      expect(source.root.test).toBe(1);
-      expect(() => {
-        wrapped.root.newProp = 1;
-      }).toThrowError('This is readonly.');
-      expect('newProp' in source.root).toBe(false);
-      expect(() => {
-        delete wrapped.root.test;
-      }).toThrowError('This is readonly.');
-      expect(source.root.test).toBe(1);
-      expect(() => {
-        Object.defineProperty(wrapped.root, 'newProp', {
-          value: 1,
-          writable: false,
-          enumerable: true,
-        });
-      }).toThrowError('This is readonly.');
-      expect('newProp' in source.root).toBe(false);
     });
   });
 });

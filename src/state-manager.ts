@@ -1,5 +1,5 @@
 import { Boundary } from '@tjenkinson/boundary';
-import { wrap, makeReadonly } from './utils';
+import { wrap } from './utils';
 import { ChangeTracker, PropertyPath } from './change-tracker';
 
 export { PropertyPath } from './change-tracker';
@@ -12,10 +12,7 @@ export type StateManagerOpts<TState> = {
   Proxy?: ProxyConstructor;
 };
 
-export type Listener<TState> = (
-  hasChanged: HasChanged,
-  state: Readonly<TState>
-) => void;
+export type Listener<TState> = (hasChanged: HasChanged, state: TState) => void;
 export type ListenerHandle = {
   remove: () => void;
 };
@@ -25,7 +22,7 @@ export type AfterUpdateFn<TState> = (
   afterUpdateInput: AfterUpdateInput<TState>
 ) => void;
 export type AfterUpdateInput<TState> = {
-  state: Readonly<TState>;
+  state: TState;
   exceptionOccurred: boolean;
   retrieveExceptions: () => any[];
 };
@@ -120,9 +117,7 @@ type ListenerWithChanges<TState> = {
  * ```
  */
 export class StateManager<TState extends object> {
-  private readonly _state: TState;
   private readonly _wrappedState: TState;
-  private readonly _readonlyState: Readonly<TState>;
   private readonly _changes: ChangeTracker;
   private readonly _listeners: ListenerWithChanges<TState>[] = [];
   private readonly _beforeUpdateFn: BeforeUpdateFn<TState> | null;
@@ -133,7 +128,7 @@ export class StateManager<TState extends object> {
 
   /**
    * Provide the initial state as the first argument. You must not mutate this state directly.
-   * You can get a reference to a read-only version using the `getState()` method.
+   * You can get a reference to a mutable version using the `getState()` method.
    *
    * The second argument is an optional object which can contain the following properties:
    * - beforeUpdate: This is called after the first `update()` call but before the callback.
@@ -141,7 +136,7 @@ export class StateManager<TState extends object> {
    *                 it.
    * - afterUpdate: This is called after an update occurs after the last subscriber has
    *                finished. It receives an object in the first argument with the following:
-   *                - state: A `Proxy` to the current state (read-only).
+   *                - state: A mutable `Proxy` to the current state.
    *                - exceptionOccurred: This is a boolean which is `true` if an exception
    *                                     occured in one or more of the subscribers.
    *                - retrieveExceptions: This returns an array of exceptions that occurred
@@ -166,9 +161,15 @@ export class StateManager<TState extends object> {
         'An implementation of `Proxy` is required. Polyfill it or provide one on the `Proxy` option.'
       );
     }
-    this._state = state;
-    this._readonlyState = makeReadonly(ProxyImpl, this._state);
-    this._wrappedState = wrap(ProxyImpl, state, {
+
+    this._beforeUpdateFn = beforeUpdate || null;
+    this._afterUpdateFn = afterUpdate || null;
+    this._boundary = new Boundary({
+      onEnter: () => this._onEnter(),
+      onExit: () => this._onExit(),
+    });
+
+    this._wrappedState = wrap(ProxyImpl, this._boundary, state, {
       afterChange: (propertyPath, oldValue, newValue) => {
         if (oldValue === newValue) {
           return;
@@ -186,23 +187,21 @@ export class StateManager<TState extends object> {
         });
       },
     });
-    this._beforeUpdateFn = beforeUpdate || null;
-    this._afterUpdateFn = afterUpdate || null;
-    this._boundary = new Boundary({
-      onEnter: () => this._onEnter(),
-      onExit: () => this._onExit(),
-    });
     this._changes = new ChangeTracker();
   }
 
   /**
-   * Returns a read-only version of the state.
+   * Returns a mutable version of the state.
    * This is not a snapshot.
    * The object you get back is a `Proxy` to the original state.
    * Properties to plain objects are also `Proxy`'s.
+   *
+   * If you are updating multiple properties, you should use `update` instead
+   * to batch the updates together and only notify subscribers once all updates
+   * are done.
    */
-  public getState(): Readonly<TState> {
-    return this._readonlyState;
+  public getState(): TState {
+    return this._wrappedState;
   }
 
   /**
@@ -254,10 +253,9 @@ export class StateManager<TState extends object> {
    *               if something at or below the provided path has changed since the
    *               subscriber was last invoked. E.g. `hasChanged('a', 'b')` for
    *               checking `state.a.b`.
-   * - state: This is a `Proxy` to the current state (read-only).
+   * - state: This is a mutable `Proxy` to the current state.
    *
-   * You are allowed to update the state again from your subscriber, but it needs to be from
-   * an `update` call.
+   * You are allowed to update the state again from your subscriber.
    *
    * Subscribers are invoked in the order they were registered. If a subscriber changes the
    * state the first subscriber will be invoked again. This means later subscribers will see
@@ -324,7 +322,7 @@ export class StateManager<TState extends object> {
       listenerWithChanges.changes = new ChangeTracker();
       const hasChanged: HasChanged = (...propertyPath: PropertyPath): boolean =>
         changes.hasPrefix(propertyPath);
-      listener(hasChanged, this._readonlyState);
+      listener(hasChanged, this._wrappedState);
     }
   }
 
@@ -338,7 +336,7 @@ export class StateManager<TState extends object> {
     if (this._afterUpdateFn) {
       try {
         this._afterUpdateFn({
-          state: this._readonlyState,
+          state: this._wrappedState,
           exceptionOccurred,
           retrieveExceptions: () => {
             exceptionsHandled = true;

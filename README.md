@@ -24,13 +24,13 @@ or available on JSDelivr at "https://cdn.jsdelivr.net/npm/@tjenkinson/state-mana
 
 ### Constructor
 
-Provide the initial state as the first argument. You must not mutate this state directly. You can get a reference to a read-only version using the `getState()` method.
+Provide the initial state as the first argument. You must not mutate this state directly. You can get a reference to a mutable version using the `getState()` method.
 
 The second argument is an optional object which can contain the following properties:
 
 - `beforeUpdate`: This is called after the first `update()` call but before the callback. It receives the state as the first argument and you are allowed to update it.
 - `afterUpdate`: This is called after an update occurs after the last subscriber has finished. It receives an object in the first argument with the following:
-  - `state:` A `Proxy` to the current state (read-only).
+  - `state:` A `Proxy` to the current state.
   - `exceptionOccurred`: This is a boolean which is `true` if an exception occured in one or more of the subscribers.
   - `retrieveExceptions`: This returns an array of exceptions that occurred in one of more of the subscribers. If you do not call this function the exceptions will be thrown asynchronously when the current stack ends. If you do call this function the exceptions will not be thrown and it's up to you to handle them.
 
@@ -47,7 +47,9 @@ const stateManager = new StateManager(initialState, {
 
 ### getState()
 
-Returns a read-only version of the state. This is not a snapshot. The object you get back is a `Proxy` to the original state. Properties to plain objects are also `Proxy`'s.
+Returns a mutable version of the state. This is not a snapshot. The object you get back is a `Proxy` to the original state. Properties to plain objects are also `Proxy`'s.
+
+If you are updating multiple properties, you should use [`update`](#updatefn) instead to batch the updates together and only notify subscribers once all updates are done.
 
 ```ts
 stateManager.getState();
@@ -84,9 +86,9 @@ This is how you are notified of changes to the state.
 The first argument taked a function which is invoked with 2 arguments:
 
 - `hasChanged`: This is a function which takes a property path. It returns `true` if something at or below the provided path has changed since the subscriber was last invoked. E.g. `hasChanged('a', 'b')` for checking `state.a.b`.
-- `state`: This is a `Proxy` to the current state (read-only).
+- `state`: This is a mutable `Proxy` to the current state.
 
-You are allowed to update the state again from your subscriber, but it needs to be from an `update` call.
+You are allowed to update the state again from your subscriber.
 
 Subscribers are invoked in the order they were registered. If a subscriber changes the state the first subscriber will be invoked again. This means earlier subscribers see the changes from later subscribers. The last subscriber won't see the intermediary changes.
 
