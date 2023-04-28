@@ -28,7 +28,7 @@ describe('StateManager', () => {
         expect(spy).lastCalledWith({ a: 1, b: true });
       });
 
-      it('returns the readonly pointer to state from getState()', () => {
+      it('returns mutable state from getState()', () => {
         const stateManager = new StateManager(
           {
             a: 1,
@@ -37,7 +37,15 @@ describe('StateManager', () => {
               d: true,
             },
           },
-          { Proxy: ProxyImpl }
+          {
+            Proxy: ProxyImpl,
+            beforeUpdate: () => {
+              expect(state.a).toBe(1);
+            },
+            afterUpdate: () => {
+              expect(state.a).toBe(2);
+            },
+          }
         );
         const state = stateManager.getState();
         expect(state).toEqual({
@@ -47,19 +55,10 @@ describe('StateManager', () => {
             d: true,
           },
         });
-        // @ts-expect-error
-        expect(() => (state.a = 2)).toThrowError('This is readonly.');
-        stateManager.update((state) => {
-          state.a = 2;
-          state.c.d = false;
-        });
-        expect(state).toEqual({
-          a: 2,
-          b: true,
-          c: {
-            d: false,
-          },
-        });
+
+        state.a = 2;
+        expect(stateManager.hasChanged('a')).toBe(true);
+        expect(state.a).toEqual(2);
       });
 
       it('returns the correct result from hasChanged', () => {
@@ -93,9 +92,6 @@ describe('StateManager', () => {
         expect(spy.mock.calls[0][0]()).toBe(true);
         expect(spy.mock.calls[0][0]('a')).toBe(true);
         expect(spy.mock.calls[0][0]('b')).toBe(false);
-        expect(() => (spy.mock.calls[0][1].a = 1)).toThrowError(
-          'This is readonly.'
-        );
 
         stateManager.update((state) => (state.b = false));
         expect(spy).toHaveBeenCalledTimes(2);
@@ -103,9 +99,24 @@ describe('StateManager', () => {
         expect(spy.mock.calls[1][0]()).toBe(true);
         expect(spy.mock.calls[1][0]('a')).toBe(false);
         expect(spy.mock.calls[1][0]('b')).toBe(true);
-        expect(() => (spy.mock.calls[1][1].a = 1)).toThrowError(
-          'This is readonly.'
-        );
+      });
+
+      it('allows state to be mutated in subscriber', () => {
+        const stateManager = new StateManager({ a: 0 }, { Proxy: ProxyImpl });
+
+        const subscriber1 = jest.fn();
+        const subscriber2 = jest.fn();
+
+        stateManager.subscribe((hasChanged, state) => {
+          subscriber1();
+          state.a = 2;
+        });
+        stateManager.subscribe(subscriber2);
+
+        stateManager.getState().a = 1;
+
+        expect(subscriber1).toHaveBeenCalledTimes(2);
+        expect(subscriber2).toHaveBeenCalledTimes(1);
       });
 
       if (proxyType !== 'polyfill') {
@@ -249,20 +260,26 @@ describe('StateManager', () => {
       });
 
       it('allows beforeUpdate to update the state', () => {
+        const beforeUpdateSpy = jest.fn();
+        const subscribeSpy = jest.fn();
         const stateManager = new StateManager(
           { a: 1, b: true },
           {
             Proxy: ProxyImpl,
             beforeUpdate: (state) => {
+              beforeUpdateSpy();
               state.a = 2;
             },
           }
         );
-        const spy = jest.fn();
-        stateManager.subscribe(spy);
+        stateManager.subscribe(subscribeSpy);
         stateManager.update();
-        expect(spy).toBeCalledTimes(1);
-        expect(spy).toBeCalledWith(expect.any(Function), { a: 2, b: true });
+        expect(beforeUpdateSpy).toBeCalledTimes(1);
+        expect(subscribeSpy).toBeCalledTimes(1);
+        expect(subscribeSpy).toBeCalledWith(expect.any(Function), {
+          a: 2,
+          b: true,
+        });
       });
 
       it('calls afterUpdate once after subscribers', () => {
@@ -305,9 +322,24 @@ describe('StateManager', () => {
           exceptionOccurred: false,
           retrieveExceptions: expect.any(Function),
         });
-        expect(() => (spy.mock.calls[0][0].state.a = 1)).toThrowError(
-          'This is readonly.'
+      });
+
+      it('allows state to be mutated in afterUpdate', () => {
+        const spy = jest.fn();
+        const stateManager = new StateManager(
+          { a: 0 },
+          {
+            Proxy: ProxyImpl,
+            afterUpdate: ({ state }) => {
+              spy();
+              if (state.a === 1) {
+                state.a = 2;
+              }
+            },
+          }
         );
+        stateManager.getState().a = 1;
+        expect(spy).toHaveBeenCalledTimes(2);
       });
 
       it('handle a listener calling update()', () => {

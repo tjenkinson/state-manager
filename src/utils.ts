@@ -1,24 +1,15 @@
 import { isPlainObject } from 'is-plain-object';
 import { PropertyPath } from './change-tracker';
+import { Boundary } from '@tjenkinson/boundary';
 
 export function isObject(input: any): input is object {
   return isPlainObject(input);
 }
 
-export function makeReadonly<T extends object>(
-  ProxyImpl: ProxyConstructor,
-  input: T
-): Readonly<T> {
-  return wrap(ProxyImpl, input, {
-    beforeChange: () => {
-      throw new TypeError('This is readonly.');
-    },
-  });
-}
-
 export const missingProperty: unique symbol = {} as any;
 export function wrap<T extends object>(
   ProxyImpl: ProxyConstructor,
+  boundary: Boundary<unknown>,
   input: T,
   {
     beforeChange,
@@ -48,17 +39,19 @@ export function wrap<T extends object>(
         return isObject(res) ? _wrap([...propertyPath, prop], res) : res;
       },
       set(target, prop, value) {
-        beforeChange && beforeChange();
-        const previousValue =
-          prop in levelInput ? (levelInput as any)[prop] : missingProperty;
-        (levelInput as any)[prop] = value;
-        afterChange &&
-          afterChange(
-            [...propertyPath, prop] as unknown as PropertyPath,
-            previousValue,
-            value
-          );
-        return true;
+        return boundary.enter(() => {
+          beforeChange && beforeChange();
+          const previousValue =
+            prop in levelInput ? (levelInput as any)[prop] : missingProperty;
+          (levelInput as any)[prop] = value;
+          afterChange &&
+            afterChange(
+              [...propertyPath, prop] as unknown as PropertyPath,
+              previousValue,
+              value
+            );
+          return true;
+        });
       },
       defineProperty(target, prop, descriptor) {
         beforeChange && beforeChange();
