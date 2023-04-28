@@ -1,7 +1,4 @@
-export type PropertyPath = {
-  // at least one item
-  0: PropertyKey;
-} & Array<PropertyKey>;
+export type PropertyPath = [PropertyKey, ...PropertyKey[]];
 
 export class ChangeTracker {
   public static readonly missing: unique symbol = {} as any;
