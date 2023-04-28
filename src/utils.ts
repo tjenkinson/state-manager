@@ -54,25 +54,28 @@ export function wrap<T extends object>(
         });
       },
       defineProperty(target, prop, descriptor) {
-        beforeChange && beforeChange();
-        const previousValue =
-          prop in levelInput ? (levelInput as any)[prop] : missingProperty;
-        Object.defineProperty(target, prop, descriptor);
-        afterChange &&
-          afterChange(
-            [...propertyPath, prop] as unknown as PropertyPath,
-            previousValue,
-            descriptor.value
-          );
-        return true;
+        return boundary.enter(() => {
+          beforeChange && beforeChange();
+          const previousValue =
+            prop in levelInput ? (levelInput as any)[prop] : missingProperty;
+          Object.defineProperty(target, prop, descriptor);
+          afterChange &&
+            afterChange(
+              [...propertyPath, prop] as unknown as PropertyPath,
+              previousValue,
+              descriptor.value
+            );
+          return true;
+        });
       },
       deleteProperty(target, prop) {
         if (!(prop in (levelInput as any))) {
           return false;
         }
-        beforeChange && beforeChange();
-        const previousValue = (levelInput as any)[prop];
-        if (delete (levelInput as any)[prop]) {
+        return boundary.enter(() => {
+          beforeChange && beforeChange();
+          const previousValue = (levelInput as any)[prop];
+          delete (levelInput as any)[prop];
           afterChange &&
             afterChange(
               [...propertyPath, prop] as unknown as PropertyPath,
@@ -80,8 +83,7 @@ export function wrap<T extends object>(
               missingProperty
             );
           return true;
-        }
-        return false;
+        });
       },
     };
     let proxy: T;
