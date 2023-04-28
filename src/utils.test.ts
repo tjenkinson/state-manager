@@ -33,32 +33,44 @@ describe('Utils', () => {
     });
 
     it('integrates boundary properly', () => {
-      const log: string[] = [];
-      const boundary = new Boundary({
-        onEnter: () => {
-          expect(source.value).toBe(0);
-          log.push('onEnter');
-        },
-        onExit: () => {
-          expect(source.value).toBe(1);
-          log.push('onExit');
-        },
-      });
+      for (const type of ['change', 'define', 'delete'] as const) {
+        const log: string[] = [];
+        const boundary = new Boundary({
+          onEnter: () => {
+            expect(source.value).toBe(type !== 'define' ? 0 : undefined);
+            log.push('onEnter');
+          },
+          onExit: () => {
+            expect(source.value).toBe(type !== 'delete' ? 1 : undefined);
+            log.push('onExit');
+          },
+        });
 
-      const source = { value: 0 };
-      const wrapped = wrap(Proxy, boundary, source, {
-        beforeChange: () => log.push('beforeChange'),
-        afterChange: () => log.push('afterChange'),
-      });
+        const source = type !== 'define' ? { value: 0 } : {};
+        const wrapped = wrap(Proxy, boundary, source, {
+          beforeChange: () => log.push('beforeChange'),
+          afterChange: () => log.push('afterChange'),
+        });
 
-      wrapped.value = 1;
+        if (type === 'change') {
+          wrapped.value = 1;
+        } else if (type === 'define') {
+          Object.defineProperty(wrapped, 'value', {
+            value: 1,
+            writable: false,
+            enumerable: true,
+          });
+        } else if (type === 'delete') {
+          delete wrapped.value;
+        }
 
-      expect(log).toStrictEqual([
-        'onEnter',
-        'beforeChange',
-        'afterChange',
-        'onExit',
-      ]);
+        expect(log).toStrictEqual([
+          'onEnter',
+          'beforeChange',
+          'afterChange',
+          'onExit',
+        ]);
+      }
     });
 
     describe('beforeChange', () => {
