@@ -12,11 +12,9 @@ export function wrap<T extends object>(
   boundary: Boundary<unknown>,
   input: T,
   {
-    beforeChange,
     afterChange,
   }: {
-    beforeChange?: () => void;
-    afterChange?: (
+    afterChange: (
       propertyPath: PropertyPath,
       oldValue: any,
       newValue: any
@@ -40,31 +38,27 @@ export function wrap<T extends object>(
       },
       set(target, prop, value) {
         return boundary.enter(() => {
-          beforeChange && beforeChange();
           const previousValue =
             prop in levelInput ? (levelInput as any)[prop] : missingProperty;
           (levelInput as any)[prop] = value;
-          afterChange &&
-            afterChange(
-              [...propertyPath, prop] as unknown as PropertyPath,
-              previousValue,
-              value
-            );
+          afterChange(
+            [...propertyPath, prop] as unknown as PropertyPath,
+            previousValue,
+            value
+          );
           return true;
         });
       },
       defineProperty(target, prop, descriptor) {
         return boundary.enter(() => {
-          beforeChange && beforeChange();
           const previousValue =
             prop in levelInput ? (levelInput as any)[prop] : missingProperty;
           Object.defineProperty(target, prop, descriptor);
-          afterChange &&
-            afterChange(
-              [...propertyPath, prop] as unknown as PropertyPath,
-              previousValue,
-              descriptor.value
-            );
+          afterChange(
+            [...propertyPath, prop] as unknown as PropertyPath,
+            previousValue,
+            descriptor.value
+          );
           return true;
         });
       },
@@ -73,15 +67,13 @@ export function wrap<T extends object>(
           return false;
         }
         return boundary.enter(() => {
-          beforeChange && beforeChange();
           const previousValue = (levelInput as any)[prop];
           delete (levelInput as any)[prop];
-          afterChange &&
-            afterChange(
-              [...propertyPath, prop] as unknown as PropertyPath,
-              previousValue,
-              missingProperty
-            );
+          afterChange(
+            [...propertyPath, prop] as unknown as PropertyPath,
+            previousValue,
+            missingProperty
+          );
           return true;
         });
       },
