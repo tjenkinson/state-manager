@@ -5,7 +5,9 @@ describe('Utils', () => {
   describe('wrap()', () => {
     it('correctly proxies the object', () => {
       const source: any = {};
-      const wrapped = wrap(Proxy, new Boundary(), source, {});
+      const wrapped = wrap(Proxy, new Boundary(), source, {
+        afterChange: () => {},
+      });
       expect(source).toStrictEqual({});
       expect(wrapped).toStrictEqual({});
       wrapped.test = 1;
@@ -48,7 +50,6 @@ describe('Utils', () => {
 
         const source = type !== 'define' ? { value: 0 } : {};
         const wrapped = wrap(Proxy, boundary, source, {
-          beforeChange: () => log.push('beforeChange'),
           afterChange: () => log.push('afterChange'),
         });
 
@@ -64,59 +65,8 @@ describe('Utils', () => {
           delete wrapped.value;
         }
 
-        expect(log).toStrictEqual([
-          'onEnter',
-          'beforeChange',
-          'afterChange',
-          'onExit',
-        ]);
+        expect(log).toStrictEqual(['onEnter', 'afterChange', 'onExit']);
       }
-    });
-
-    describe('beforeChange', () => {
-      it('calls beforeChange before property added', () => {
-        const source = {} as any;
-        const wrapped = wrap(Proxy, new Boundary(), source, {
-          beforeChange: () => {
-            expect(source.test).toBeUndefined();
-          },
-        });
-        wrapped.test = 1;
-      });
-
-      it('calls beforeChange before property removed', () => {
-        const source = { test: 1 } as any;
-        const wrapped = wrap(Proxy, new Boundary(), source, {
-          beforeChange: () => {
-            expect(source.test).toBe(1);
-          },
-        });
-        delete wrapped.test;
-      });
-
-      it('calls beforeChange before property updated', () => {
-        const source = { test: 1 } as any;
-        const wrapped = wrap(Proxy, new Boundary(), source, {
-          beforeChange: () => {
-            expect(source.test).toBe(1);
-          },
-        });
-        wrapped.test = 2;
-      });
-
-      it('calls beforeChange before `Object.defineProperty`', () => {
-        const source = {} as any;
-        const wrapped = wrap(Proxy, new Boundary(), source, {
-          beforeChange: () => {
-            expect(source.test).toBeUndefined();
-          },
-        });
-        Object.defineProperty(wrapped, 'test', {
-          value: 1,
-          writable: false,
-          enumerable: true,
-        });
-      });
     });
 
     describe('afterChange', () => {
