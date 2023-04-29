@@ -1,4 +1,4 @@
-import { StateManager } from './state-manager';
+import { HasChanged, StateManager } from './state-manager';
 import ProxyPolyfillBuilder from 'proxy-polyfill/src/proxy';
 const proxyPolyfill = ProxyPolyfillBuilder();
 
@@ -78,6 +78,92 @@ describe('StateManager', () => {
         expect(stateManager.hasChanged('c')).toBe(true);
         expect(stateManager.hasChanged('c', 'd')).toBe(true);
       });
+
+      if (proxyType !== 'polyfill') {
+        it('supports arrays', () => {
+          const stateManager = new StateManager<{ a: (number | number[])[] }>(
+            {
+              a: [0],
+            },
+            { Proxy: ProxyImpl }
+          );
+
+          let subscriber: (hasChanged: HasChanged) => void;
+          let subscribeCalls = 0;
+          stateManager.subscribe((hasChanged) => {
+            subscribeCalls++;
+            subscriber(hasChanged);
+          });
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 0)).toBe(false);
+            expect(hasChanged('a', 1)).toBe(true);
+          };
+          stateManager.update((state) => state.a.push(1));
+          expect(subscribeCalls).toBe(1);
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 0)).toBe(true);
+            expect(hasChanged('a', 1)).toBe(true);
+            expect(hasChanged('a', 2)).toBe(false);
+          };
+          stateManager.update((state) => state.a.shift());
+          expect(subscribeCalls).toBe(2);
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 0)).toBe(false);
+            expect(hasChanged('a', 1)).toBe(true);
+            expect(hasChanged('a', 2)).toBe(true);
+            expect(hasChanged('a', 3)).toBe(true);
+            expect(hasChanged('a', 4)).toBe(false);
+          };
+          stateManager.update((state) => state.a.push(2, 3, 4));
+          expect(subscribeCalls).toBe(3);
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 3)).toBe(false);
+            expect(hasChanged('a', 4)).toBe(true);
+          };
+          stateManager.update((state) => state.a.push([100]));
+          expect(subscribeCalls).toBe(4);
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 4)).toBe(true);
+            expect(hasChanged('a', 4, 0)).toBe(false);
+            expect(hasChanged('a', 4, 1)).toBe(true);
+          };
+          stateManager.update((state) => (state.a[4] as number[]).push(101));
+          expect(subscribeCalls).toBe(5);
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 'anything')).toBe(true);
+          };
+          stateManager.update((state) => (state.a = []));
+          expect(subscribeCalls).toBe(6);
+
+          subscriber = (hasChanged: HasChanged) => {
+            expect(hasChanged('a')).toBe(true);
+            expect(hasChanged('a', 'b')).toBe(true);
+            expect(hasChanged('a', 0)).toBe(false);
+          };
+          stateManager.update((state) => ((state.a as any).b = true));
+          expect(subscribeCalls).toBe(7);
+        });
+
+        it('supports array at root', () => {
+          const stateManager = new StateManager([0], { Proxy: ProxyImpl });
+          stateManager.update((state) => state.push(1));
+          expect(stateManager.hasChanged(0)).toBe(false);
+          expect(stateManager.hasChanged(1)).toBe(true);
+          expect(stateManager.hasChanged(2)).toBe(false);
+        });
+      }
 
       it('calls the subscriber when the state changes with the correct input', () => {
         const stateManager = new StateManager(

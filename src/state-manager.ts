@@ -1,6 +1,10 @@
 import { Boundary } from '@tjenkinson/boundary';
 import { wrap } from './utils';
-import { ChangeTracker, PropertyPath } from './change-tracker';
+import {
+  ChangeTracker,
+  PropertyPath,
+  toInternalPropertyPath,
+} from './change-tracker';
 
 export { PropertyPath } from './change-tracker';
 
@@ -34,7 +38,7 @@ type ListenerWithChanges<TState> = {
 };
 
 /**
- * This provides a controlled way of managing a state object, and being notified when
+ * This provides a controlled way of managing a state object/array, and being notified when
  * parts of it have changed. It ensures that state updates are atomic, meaning subscribers
  * are only notified of changes when the state has been updated completely.
  *
@@ -194,7 +198,7 @@ export class StateManager<TState extends object> {
    * Returns a mutable version of the state.
    * This is not a snapshot.
    * The object you get back is a `Proxy` to the original state.
-   * Properties to plain objects are also `Proxy`'s.
+   * Properties to plain objects or arrays are also `Proxy`'s.
    *
    * If you are updating multiple properties, you should use `update` instead
    * to batch the updates together and only notify subscribers once all updates
@@ -210,7 +214,7 @@ export class StateManager<TState extends object> {
    * you missed.
    */
   public hasChanged(...propertyPath: PropertyPath): boolean {
-    return this._changes.hasPrefix(propertyPath);
+    return this._changes.hasPrefix(toInternalPropertyPath(propertyPath));
   }
 
   /**
@@ -321,7 +325,7 @@ export class StateManager<TState extends object> {
     if (allPropertyPaths.length) {
       listenerWithChanges.changes = new ChangeTracker();
       const hasChanged: HasChanged = (...propertyPath: PropertyPath): boolean =>
-        changes.hasPrefix(propertyPath);
+        changes.hasPrefix(toInternalPropertyPath(propertyPath));
       listener(hasChanged, this._wrappedState);
     }
   }

@@ -1,9 +1,9 @@
-import { isPlainObject } from 'is-plain-object';
-import { PropertyPath } from './change-tracker';
+import { InternalPropertyPath } from './change-tracker';
 import { Boundary } from '@tjenkinson/boundary';
+import { isPlainObject } from 'is-plain-object';
 
-export function isObject(input: any): input is object {
-  return isPlainObject(input);
+export function isObjectOrArray(input: any): input is object {
+  return isPlainObject(input) || Array.isArray(input);
 }
 
 export const missingProperty: unique symbol = {} as any;
@@ -15,7 +15,7 @@ export function wrap<T extends object>(
     afterChange,
   }: {
     afterChange: (
-      propertyPath: PropertyPath,
+      propertyPath: InternalPropertyPath,
       oldValue: any,
       newValue: any
     ) => void;
@@ -34,7 +34,7 @@ export function wrap<T extends object>(
     const traps: ProxyHandler<T> = {
       get(target, prop) {
         const res = (levelInput as any)[prop];
-        return isObject(res) ? _wrap([...propertyPath, prop], res) : res;
+        return isObjectOrArray(res) ? _wrap([...propertyPath, prop], res) : res;
       },
       set(target, prop, value) {
         return boundary.enter(() => {
@@ -42,7 +42,7 @@ export function wrap<T extends object>(
             prop in levelInput ? (levelInput as any)[prop] : missingProperty;
           (levelInput as any)[prop] = value;
           afterChange(
-            [...propertyPath, prop] as unknown as PropertyPath,
+            [...propertyPath, prop] as unknown as InternalPropertyPath,
             previousValue,
             value
           );
@@ -55,7 +55,7 @@ export function wrap<T extends object>(
             prop in levelInput ? (levelInput as any)[prop] : missingProperty;
           Object.defineProperty(target, prop, descriptor);
           afterChange(
-            [...propertyPath, prop] as unknown as PropertyPath,
+            [...propertyPath, prop] as unknown as InternalPropertyPath,
             previousValue,
             descriptor.value
           );
@@ -70,7 +70,7 @@ export function wrap<T extends object>(
           const previousValue = (levelInput as any)[prop];
           delete (levelInput as any)[prop];
           afterChange(
-            [...propertyPath, prop] as unknown as PropertyPath,
+            [...propertyPath, prop] as unknown as InternalPropertyPath,
             previousValue,
             missingProperty
           );

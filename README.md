@@ -2,7 +2,7 @@
 
 # State Manager
 
-This provides a controlled way of managing a state object, and being notified when parts of it have changed. It ensures that state updates are atomic, meaning change subscribers are only notified of changes when the state has been updated completely. Subscribers also get the latest state and changes whenver they are invoked.
+This provides a controlled way of managing a state object/array, and being notified when parts of it have changed. It ensures that state updates are atomic, meaning change subscribers are only notified of changes when the state has been updated completely. Subscribers also get the latest state and changes whenver they are invoked.
 
 It requires [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy) support. If you are running on an environment where this is unavailable I'd recommend [GoogleChrome/proxy-polyfill](https://github.com/GoogleChrome/proxy-polyfill). You can provide the implementation on the `Proxy` config option if you don't want to polyfill. Take note of the differences in behaviour to real `Proxy`'s in the README.
 
@@ -10,7 +10,7 @@ Subscribers receive a `hasChanged` function which when called with a property pa
 
 Subscribers are also able to update the state. Earlier subscribers see the changes from later subscribers. The last subsciber won't see the intermediary changes.
 
-Changes to values on [plain objects (created by the `Object` constructor)](https://github.com/jonschlinkert/is-plain-object) and nested plain objects in the state are detected (as these are proxied). Values inside other types of objects are not watched.
+Changes to values on [plain objects (created by the `Object` constructor)](https://github.com/jonschlinkert/is-plain-object) or arrays, and nested plain objects or arrays in the state are detected (as these are proxied). Values inside other types of objects are not watched.
 
 ## Installation
 
@@ -47,7 +47,7 @@ const stateManager = new StateManager(initialState, {
 
 ### getState()
 
-Returns a mutable version of the state. This is not a snapshot. The object you get back is a `Proxy` to the original state. Properties to plain objects are also `Proxy`'s.
+Returns a mutable version of the state. This is not a snapshot. The object you get back is a `Proxy` to the original state. Properties to plain objects or arrays are also `Proxy`'s.
 
 If you are updating multiple properties, you should use [`update`](#updatefn) instead to batch the updates together and only notify subscribers once all updates are done.
 
