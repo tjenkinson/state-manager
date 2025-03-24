@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/tjenkinson/state-manager#readme",
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^24.1.0",
+    "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^15.0.2",
     "@rollup/plugin-typescript": "^11.1.0",
     "@tjenkinson/boundary": "^2.1.0",
